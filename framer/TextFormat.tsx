@@ -17,7 +17,6 @@ import {
     Languages,
     Hash,
     Search,
-    TriangleDashed,
     Eraser,
     Filter,
     X,
@@ -46,8 +45,13 @@ function countEffectiveLines(text: string) {
     return text.split("\n").length
 }
 
-function visibleLinesEstimate(text: string) {
-    return text.split("\n").length
+// FIX 5: visibleLinesEstimate ora stima le righe visive considerando
+// il wrapping approssimativo (basato su ~80 caratteri per riga come default).
+function visibleLinesEstimate(text: string, charsPerLine = 80) {
+    if (!text) return 0
+    return text.split("\n").reduce((total, line) => {
+        return total + Math.max(1, Math.ceil(line.length / charsPerLine))
+    }, 0)
 }
 
 function toTitleCase(text: string) {
@@ -331,16 +335,12 @@ function ToolbarButton({
                 fontSize: 12,
                 fontWeight: 600,
                 ["--btn-bg" as any]: isIcon ? "#FFFFFF" : "transparent",
-                ["--btn-border" as any]: isIcon
-                    ? "#E5E8EF"
-                    : "transparent",
+                ["--btn-border" as any]: isIcon ? "#E5E8EF" : "transparent",
                 ["--btn-shadow" as any]: isIcon
                     ? "0 1px 0 rgba(10, 15, 30, 0.04)"
                     : "none",
                 ["--btn-bg-hover" as any]: isIcon ? "#F4F6FA" : "#F4F6FA",
-                ["--btn-border-hover" as any]: isIcon
-                    ? "#DDE2EA"
-                    : "#DDE2EA",
+                ["--btn-border-hover" as any]: isIcon ? "#DDE2EA" : "#DDE2EA",
                 ["--btn-shadow-hover" as any]: isIcon
                     ? "0 1px 0 rgba(10, 15, 30, 0.06)"
                     : "0 1px 0 rgba(10, 15, 30, 0.04)",
@@ -405,28 +405,6 @@ function SecondaryCta({
     )
 }
 
-function Card({
-    children,
-    background = "white",
-}: {
-    children: React.ReactNode
-    background?: string
-}) {
-    return (
-        <div
-            style={{
-                background,
-                border: "1px solid #E5E8EF",
-                borderRadius: 14,
-                padding: 8,
-                boxShadow: "0 1px 0 rgba(10, 15, 30, 0.02)",
-            }}
-        >
-            {children}
-        </div>
-    )
-}
-
 export default function TextFormatterFramerResponsive(props: Props) {
     const {
         title,
@@ -443,8 +421,11 @@ export default function TextFormatterFramerResponsive(props: Props) {
     const [text, setText] = React.useState("")
     const [toast, setToast] = React.useState("")
 
-    const [history, setHistory] = React.useState<string[]>([""])
-    const [historyIndex, setHistoryIndex] = React.useState(0)
+    // FIX 4: history gestita con useRef per evitare closure stale.
+    const historyRef = React.useRef<string[]>([""])
+    const historyIndexRef = React.useRef(0)
+    // Stato separato solo per forzare re-render quando necessario.
+    const [, forceUpdate] = React.useReducer((x) => x + 1, 0)
 
     const [replaceBreaksWith, setReplaceBreaksWith] = React.useState("")
     const [prefix, setPrefix] = React.useState("")
@@ -458,11 +439,15 @@ export default function TextFormatterFramerResponsive(props: Props) {
     const [activeSection, setActiveSection] = React.useState<
         "none" | "transform" | "lines" | "cleanup" | "replace"
     >("none")
+    // FIX 3: activeGroup separato da toolsOpen — il pannello laterale si apre
+    // solo al click, non al semplice hover nel menu.
     const [activeGroup, setActiveGroup] = React.useState("none")
+    const [hoveredGroup, setHoveredGroup] = React.useState("none")
 
     const toolsMenuRef = React.useRef<HTMLDivElement | null>(null)
-
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+    const textRef = React.useRef(text)
+    textRef.current = text
 
     const showToast = React.useCallback((message: string) => {
         setToast(message)
@@ -474,31 +459,24 @@ export default function TextFormatterFramerResponsive(props: Props) {
         return () => window.clearTimeout(timeout)
     }, [toast])
 
-    const pushHistory = React.useCallback(
-        (next: string) => {
-            setHistory((prev) => {
-                const trimmed = prev.slice(0, historyIndex + 1)
-                if (trimmed[trimmed.length - 1] === next) return trimmed
-                return [...trimmed, next]
-            })
-            setHistoryIndex((prev) => prev + 1)
-        },
-        [historyIndex]
-    )
+    // FIX 4: pushHistory e applyText usano ref per leggere sempre il valore
+    // corrente di historyIndex senza dipendere dalla closure.
+    const pushHistory = React.useCallback((next: string) => {
+        const idx = historyIndexRef.current
+        const trimmed = historyRef.current.slice(0, idx + 1)
+        if (trimmed[trimmed.length - 1] === next) return
+        historyRef.current = [...trimmed, next]
+        historyIndexRef.current = historyRef.current.length - 1
+    }, [])
 
     const applyText = React.useCallback(
         (next: string, successMessage?: string) => {
             setText(next)
-            setHistory((prev) => {
-                const trimmed = prev.slice(0, historyIndex + 1)
-                if (trimmed[trimmed.length - 1] === next) return trimmed
-                const newHistory = [...trimmed, next]
-                setHistoryIndex(newHistory.length - 1)
-                return newHistory
-            })
+            pushHistory(next)
             if (successMessage) showToast(successMessage)
+            forceUpdate()
         },
-        [historyIndex, showToast]
+        [pushHistory, showToast]
     )
 
     const onTextChange = (value: string) => {
@@ -506,25 +484,28 @@ export default function TextFormatterFramerResponsive(props: Props) {
     }
 
     const commitTextSnapshot = React.useCallback(() => {
-        if (history[historyIndex] !== text) {
-            pushHistory(text)
+        const current = textRef.current
+        const idx = historyIndexRef.current
+        if (historyRef.current[idx] !== current) {
+            pushHistory(current)
+            forceUpdate()
         }
-    }, [history, historyIndex, pushHistory, text])
+    }, [pushHistory])
 
     const undo = () => {
-        if (historyIndex <= 0) return
-        const nextIndex = historyIndex - 1
-        setHistoryIndex(nextIndex)
-        setText(history[nextIndex])
+        if (historyIndexRef.current <= 0) return
+        historyIndexRef.current -= 1
+        setText(historyRef.current[historyIndexRef.current])
         showToast("Undo")
+        forceUpdate()
     }
 
     const redo = () => {
-        if (historyIndex >= history.length - 1) return
-        const nextIndex = historyIndex + 1
-        setHistoryIndex(nextIndex)
-        setText(history[nextIndex])
+        if (historyIndexRef.current >= historyRef.current.length - 1) return
+        historyIndexRef.current += 1
+        setText(historyRef.current[historyIndexRef.current])
         showToast("Redo")
+        forceUpdate()
     }
 
     const copyText = async () => {
@@ -553,13 +534,15 @@ export default function TextFormatterFramerResponsive(props: Props) {
         if (!toolsOpen) return
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node
-            if (toolsMenuRef.current && !toolsMenuRef.current.contains(target)) {
+            if (
+                toolsMenuRef.current &&
+                !toolsMenuRef.current.contains(target)
+            ) {
                 setToolsOpen(false)
             }
         }
         window.addEventListener("mousedown", handleClickOutside)
-        return () =>
-            window.removeEventListener("mousedown", handleClickOutside)
+        return () => window.removeEventListener("mousedown", handleClickOutside)
     }, [toolsOpen])
 
     const effectiveLines = countEffectiveLines(text)
@@ -569,38 +552,52 @@ export default function TextFormatterFramerResponsive(props: Props) {
 
     const showSidePanel = activeGroup !== "none"
 
-    const sectionMeta: Record<
-        string,
-        { label: string; icon: React.ReactNode }
-    > = {
-        transform: { label: "Transform text", icon: <Sparkles size={16} /> },
-        lines: { label: "Lines and structure", icon: <Pilcrow size={16} /> },
-        cleanup: { label: "Content cleanup", icon: <Eraser size={16} /> },
-        replace: {
-            label: "Find, replace, and filter",
-            icon: <Search size={16} />,
-        },
-    }
+    const sectionMeta: Record<string, { label: string; icon: React.ReactNode }> =
+        {
+            transform: {
+                label: "Transform text",
+                icon: <Sparkles size={16} />,
+            },
+            lines: {
+                label: "Lines and structure",
+                icon: <Pilcrow size={16} />,
+            },
+            cleanup: { label: "Content cleanup", icon: <Eraser size={16} /> },
+            replace: {
+                label: "Find, replace, and filter",
+                icon: <Search size={16} />,
+            },
+        }
 
-    const groupMeta: Record<
-        string,
-        { label: string; icon: React.ReactNode }
-    > = {
-        reversals: { label: "Reversals", icon: <RefreshCw size={16} /> },
-        sortings: { label: "Sortings", icon: <ArrowUpDown size={16} /> },
-        duplicates: { label: "Duplicates", icon: <CopyMinus size={16} /> },
-        linebreaks: { label: "Line breaks", icon: <Pilcrow size={16} /> },
-        prefix: { label: "Prefix and suffix", icon: <Tag size={16} /> },
-        create_breaks: {
-            label: "Create line breaks",
-            icon: <Scissors size={16} />,
-        },
-        spaces: { label: "Empty lines and spaces", icon: <Sparkles size={16} /> },
-        accents: { label: "Accents", icon: <Languages size={16} /> },
-        numbers: { label: "Number sorting", icon: <Hash size={16} /> },
-        replace: { label: "Replace text", icon: <Search size={16} /> },
-        filter: { label: "Filter lines", icon: <Filter size={16} /> },
-    }
+    const groupMeta: Record<string, { label: string; icon: React.ReactNode }> =
+        {
+            reversals: { label: "Reversals", icon: <RefreshCw size={16} /> },
+            sortings: { label: "Sortings", icon: <ArrowUpDown size={16} /> },
+            duplicates: {
+                label: "Duplicates",
+                icon: <CopyMinus size={16} />,
+            },
+            linebreaks: {
+                label: "Line breaks",
+                icon: <Pilcrow size={16} />,
+            },
+            prefix: { label: "Prefix and suffix", icon: <Tag size={16} /> },
+            create_breaks: {
+                label: "Create line breaks",
+                icon: <Scissors size={16} />,
+            },
+            spaces: {
+                label: "Empty lines and spaces",
+                icon: <Sparkles size={16} />,
+            },
+            accents: { label: "Accents", icon: <Languages size={16} /> },
+            numbers: {
+                label: "Number sorting",
+                icon: <Hash size={16} />,
+            },
+            replace: { label: "Replace text", icon: <Search size={16} /> },
+            filter: { label: "Filter lines", icon: <Filter size={16} /> },
+        }
 
     const panelHeader = (() => {
         if (activeGroup === "none") return { title: "", icon: null }
@@ -610,127 +607,105 @@ export default function TextFormatterFramerResponsive(props: Props) {
     })()
 
     const panelContent = (() => {
+        const renderActions = (
+            actions: { label: string; onClick: () => void }[]
+        ) => (
+            <div style={{ display: "grid", gap: 8 }}>
+                {actions.map((action) => (
+                    <SecondaryCta
+                        key={action.label}
+                        label={action.label}
+                        onClick={action.onClick}
+                    />
+                ))}
+            </div>
+        )
+
         switch (activeGroup) {
             case "reversals":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Reverse text"
-                            onClick={() =>
-applyText(reverseText(text), "Text reversed")
-                            }
-                        />
-                        <SecondaryCta
-                            label="Reverse words"
-                            onClick={() =>
-applyText(
-                                    reverseWords(text),
-                                    "Words reversed"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Reverse letters in each word"
-                            onClick={() =>
-applyText(
-                                    reverseLettersEachWord(text),
-                                    "Letters reversed"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Reverse line order"
-                            onClick={() =>
-applyText(
-                                    reverseLinesOrder(text),
-                                    "Line order reversed"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Reverse text",
+                        onClick: () =>
+                            applyText(reverseText(text), "Text reversed"),
+                    },
+                    {
+                        label: "Reverse words",
+                        onClick: () =>
+                            applyText(reverseWords(text), "Words reversed"),
+                    },
+                    {
+                        label: "Reverse letters in each word",
+                        onClick: () =>
+                            applyText(
+                                reverseLettersEachWord(text),
+                                "Letters reversed"
+                            ),
+                    },
+                    {
+                        label: "Reverse line order",
+                        onClick: () =>
+                            applyText(
+                                reverseLinesOrder(text),
+                                "Line order reversed"
+                            ),
+                    },
+                ])
             case "sortings":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Sort lines A–Z"
-                            onClick={() =>
-applyText(
-                                    sortLinesAZ(text),
-                                    "Lines sorted A–Z"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Sort lines Z–A"
-                            onClick={() =>
-applyText(
-                                    sortLinesZA(text),
-                                    "Lines sorted Z–A"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Sort by length"
-                            onClick={() =>
-applyText(
-                                    sortLinesByLength(text),
-                                    "Lines sorted by length"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Add line numbers"
-                            onClick={() =>
-applyText(
-                                    addLineNumbers(text),
-                                    "Numbering added"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Sort lines A–Z",
+                        onClick: () =>
+                            applyText(sortLinesAZ(text), "Lines sorted A–Z"),
+                    },
+                    {
+                        label: "Sort lines Z–A",
+                        onClick: () =>
+                            applyText(sortLinesZA(text), "Lines sorted Z–A"),
+                    },
+                    {
+                        label: "Sort by length",
+                        onClick: () =>
+                            applyText(
+                                sortLinesByLength(text),
+                                "Lines sorted by length"
+                            ),
+                    },
+                    {
+                        label: "Add line numbers",
+                        onClick: () =>
+                            applyText(addLineNumbers(text), "Numbering added"),
+                    },
+                ])
             case "duplicates":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Words uniche A-Z"
-                            onClick={() =>
-applyText(
-                                    uniqueWordsAZ(text),
-                                    "Duplicates rimossi"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Words uniche Z-A"
-                            onClick={() =>
-applyText(
-                                    uniqueWordsZA(text),
-                                    "Duplicates rimossi"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Remove duplicate lines (case-insensitive)"
-                            onClick={() =>
-applyText(
-                                    removeDuplicateLines(text, false),
-                                    "Duplicate lines removed"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Remove duplicate lines (case-sensitive)"
-                            onClick={() =>
-applyText(
-                                    removeDuplicateLines(text, true),
-                                    "Duplicate lines removed"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Unique words A–Z",
+                        onClick: () =>
+                            applyText(uniqueWordsAZ(text), "Duplicates removed"),
+                    },
+                    {
+                        label: "Unique words Z–A",
+                        onClick: () =>
+                            applyText(uniqueWordsZA(text), "Duplicates removed"),
+                    },
+                    {
+                        label: "Remove duplicate lines (case-insensitive)",
+                        onClick: () =>
+                            applyText(
+                                removeDuplicateLines(text, false),
+                                "Duplicate lines removed"
+                            ),
+                    },
+                    {
+                        label: "Remove duplicate lines (case-sensitive)",
+                        onClick: () =>
+                            applyText(
+                                removeDuplicateLines(text, true),
+                                "Duplicate lines removed"
+                            ),
+                    },
+                ])
             case "linebreaks":
                 return (
                     <div style={{ display: "grid", gap: 8 }}>
@@ -738,28 +713,23 @@ applyText(
                             label="Replace all line breaks with"
                             icon={<Pilcrow size={18} />}
                             value={replaceBreaksWith}
-                            onChange={(e) =>
-                                setReplaceBreaksWith(e.target.value)
-                            }
+                            onChange={(e) => setReplaceBreaksWith(e.target.value)}
                         />
                         <SecondaryCta
                             label="Apply"
                             onClick={() =>
-applyText(
-                                    replaceLineBreaks(
-                                        text,
-                                        replaceBreaksWith
-                                    ),
-                                    "Line breaks sostituiti"
+                                applyText(
+                                    replaceLineBreaks(text, replaceBreaksWith),
+                                    "Line breaks replaced"
                                 )
                             }
                         />
                         <SecondaryCta
                             label="Remove all line breaks"
                             onClick={() =>
-applyText(
+                                applyText(
                                     removeAllLineBreaks(text),
-                                    "Line breaks rimossi"
+                                    "Line breaks removed"
                                 )
                             }
                         />
@@ -783,13 +753,9 @@ applyText(
                         <SecondaryCta
                             label="Apply to all lines"
                             onClick={() =>
-applyText(
-                                    addPrefixSuffixToLines(
-                                        text,
-                                        prefix,
-                                        suffix
-                                    ),
-                                    "Prefix and suffix applicati"
+                                applyText(
+                                    addPrefixSuffixToLines(text, prefix, suffix),
+                                    "Prefix and suffix applied"
                                 )
                             }
                         />
@@ -807,9 +773,9 @@ applyText(
                         <SecondaryCta
                             label="Insert line break"
                             onClick={() =>
-applyText(
+                                applyText(
                                     createBreakAfterToken(text, breakAfter),
-                                    "Line breaks inseriti"
+                                    "Line breaks inserted"
                                 )
                             }
                         />
@@ -823,117 +789,103 @@ applyText(
                         <SecondaryCta
                             label="Apply every X characters"
                             onClick={() =>
-applyText(
+                                applyText(
                                     createBreakEveryNChars(
                                         text,
                                         Number(everyChars)
                                     ),
-                                    "Line breaks creati"
+                                    "Line breaks created"
                                 )
                             }
                         />
                     </div>
                 )
             case "spaces":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Remove empty lines"
-                            onClick={() =>
-applyText(
-                                    removeEmptyLines(text),
-                                    "Empty lines removed"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Reduce multiple empty lines"
-                            onClick={() =>
-applyText(
-                                    reduceMultipleEmptyLines(text),
-                                    "Empty lines reduced"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Remove double spaces (one pass)"
-                            onClick={() =>
-applyText(
-                                    removeDoubleSpacesOnce(text),
-                                    "Double spaces reduced"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Remove double spaces (all)"
-                            onClick={() =>
-applyText(
-                                    removeDoubleSpacesAll(text),
-                                    "Double spaces removed"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Remove empty lines",
+                        onClick: () =>
+                            applyText(
+                                removeEmptyLines(text),
+                                "Empty lines removed"
+                            ),
+                    },
+                    {
+                        label: "Reduce multiple empty lines",
+                        onClick: () =>
+                            applyText(
+                                reduceMultipleEmptyLines(text),
+                                "Empty lines reduced"
+                            ),
+                    },
+                    {
+                        label: "Remove double spaces (one pass)",
+                        onClick: () =>
+                            applyText(
+                                removeDoubleSpacesOnce(text),
+                                "Double spaces reduced"
+                            ),
+                    },
+                    {
+                        label: "Remove double spaces (all)",
+                        onClick: () =>
+                            applyText(
+                                removeDoubleSpacesAll(text),
+                                "Double spaces removed"
+                            ),
+                    },
+                ])
             case "accents":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Remove accents"
-                            onClick={() =>
-applyText(
-                                    removeAccents(text),
-                                    "Accents rimossi"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Accents → apostrofo"
-                            onClick={() =>
-applyText(
-                                    accentToApostrophe(text),
-                                    "Accents convertiti"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Remove accents",
+                        onClick: () =>
+                            applyText(removeAccents(text), "Accents removed"),
+                    },
+                    {
+                        label: "Accents → apostrophe",
+                        onClick: () =>
+                            applyText(
+                                accentToApostrophe(text),
+                                "Accents converted"
+                            ),
+                    },
+                ])
             case "numbers":
-                return (
-                    <div style={{ display: "grid", gap: 8 }}>
-                        <SecondaryCta
-                            label="Sort numbers separated by space"
-                            onClick={() =>
-applyText(
-                                    sortNumbersInLine(text, "space"),
-                                    "Numbers sorted"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Sort numbers separated by comma"
-                            onClick={() =>
-applyText(
-                                    sortNumbersInLine(text, "comma"),
-                                    "Numbers sorted"
-                                )
-                            }
-                        />
-                        <SecondaryCta
-                            label="Sort numeric lines"
-                            onClick={() =>
-applyText(
-                                    sortNumericLines(text),
-                                    "Numeric lines sorted"
-                                )
-                            }
-                        />
-                    </div>
-                )
+                return renderActions([
+                    {
+                        label: "Sort numbers separated by space",
+                        onClick: () =>
+                            applyText(
+                                sortNumbersInLine(text, "space"),
+                                "Numbers sorted"
+                            ),
+                    },
+                    {
+                        label: "Sort numbers separated by comma",
+                        onClick: () =>
+                            applyText(
+                                sortNumbersInLine(text, "comma"),
+                                "Numbers sorted"
+                            ),
+                    },
+                    {
+                        label: "Sort numeric lines",
+                        onClick: () =>
+                            applyText(
+                                sortNumericLines(text),
+                                "Numeric lines sorted"
+                            ),
+                    },
+                ])
             case "filter":
                 return (
                     <div
-                        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                        }}
                     >
                         <IconInput
                             label="Filter word"
@@ -986,7 +938,11 @@ applyText(
             default:
                 return (
                     <div
-                        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                        }}
                     >
                         <IconInput
                             label="Find"
@@ -1148,10 +1104,7 @@ applyText(
                 }
                 .tf-stats {
                     display: grid;
-                    grid-template-columns: repeat(
-                        auto-fit,
-                        minmax(160px, 1fr)
-                    );
+                    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
                     border-top: 1px solid rgba(0, 0, 0, 0.03);
                 }
                 .tf-stat {
@@ -1167,24 +1120,16 @@ applyText(
                     border-left: none;
                 }
                 @media (max-width: 519px) {
-                    .tf-stat {
-                        border-left: none;
-                    }
+                    .tf-stat { border-left: none; }
                 }
                 @media (min-width: 520px) {
-                    .tf-stat:nth-child(-n + 2) {
-                        border-top: none;
-                    }
+                    .tf-stat:nth-child(-n + 2) { border-top: none; }
                 }
                 @media (min-width: 700px) {
-                    .tf-stat:nth-child(-n + 3) {
-                        border-top: none;
-                    }
+                    .tf-stat:nth-child(-n + 3) { border-top: none; }
                 }
                 @media (min-width: 900px) {
-                    .tf-stat:nth-child(-n + 4) {
-                        border-top: none;
-                    }
+                    .tf-stat:nth-child(-n + 4) { border-top: none; }
                 }
                 .tf-menu-popover {
                     animation: tfFadeIn 180ms ease;
@@ -1204,9 +1149,7 @@ applyText(
                     transition: grid-template-columns 520ms cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 @media (max-width: 900px) {
-                    .tf-main-row {
-                        grid-template-columns: 1fr !important;
-                    }
+                    .tf-main-row { grid-template-columns: 1fr !important; }
                 }
                 @media (max-width: 820px) {
                     .tf-tools-menu {
@@ -1214,9 +1157,7 @@ applyText(
                         width: min(92vw, 360px);
                         align-items: flex-end;
                     }
-                    .tf-tools-panel {
-                        width: 100% !important;
-                    }
+                    .tf-tools-panel { width: 100% !important; }
                     .tf-side-panel {
                         width: 100% !important;
                         flex: 1 1 100% !important;
@@ -1227,278 +1168,273 @@ applyText(
                     }
                 }
                 @keyframes tfFadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-6px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
+                    from { opacity: 0; transform: translateY(-6px); }
+                    to   { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
+
+            {/* Header */}
+            <div
+                style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 20,
+                    marginBottom: 12,
+                    background: "transparent",
+                    borderRadius: 0,
+                    padding: 0,
+                }}
+            >
                 <div
                     style={{
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 20,
-                        marginBottom: 12,
-                        background: "transparent",
-                        borderRadius: 0,
-                        padding: 0,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        marginBottom: 10,
                     }}
                 >
-                    <div
-                        style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            flexWrap: "wrap",
-                            marginBottom: 10,
-                        }}
-                    >
+                    <div style={{ flex: "1 1 320px", minWidth: 0 }}>
                         <div
                             style={{
-                                flex: "1 1 320px",
-                                minWidth: 0,
+                                fontSize: 20,
+                                fontWeight: 700,
+                                lineHeight: 1.1,
+                                wordBreak: "break-word",
                             }}
                         >
+                            {title}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* FIX 2: ordine corretto — editor a sinistra, side panel a destra */}
+            <div
+                className="tf-main-row"
+                style={{
+                    gridTemplateColumns: showSidePanel
+                        ? "minmax(0, 1fr) 303px"
+                        : "minmax(0, 1fr)",
+                }}
+            >
+                {/* Colonna sinistra: editor principale */}
+                <div
+                    style={{
+                        background: "#FFFFFF",
+                        border: "1px solid #E5E8EF",
+                        borderRadius: 14,
+                        padding: 8,
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                    }}
+                >
+                    {/* Toolbar */}
+                    <div style={{ position: "relative" }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                padding: "6px 8px",
+                                borderRadius: 12,
+                                background: "rgba(27, 36, 55, 0.03)",
+                            }}
+                        >
+                            {/* Pulsanti case + more tools */}
                             <div
                                 style={{
-                                    fontSize: 20,
-                                    fontWeight: 700,
-                                    lineHeight: 1.1,
-                                    wordBreak: "break-word",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    flexWrap: "wrap",
+                                    minWidth: 0,
+                                    flex: "1 1 320px",
                                 }}
                             >
-                                {title}
-                            </div>
+                                <ToolbarButton
+                                    label="Capitalize after punctuation"
+                                    icon={<span>.Aa</span>}
+                                    onClick={() =>
+                                        applyText(
+                                            capitalizeAfterPunctuation(text),
+                                            "Sentences updated"
+                                        )
+                                    }
+                                    accent={accent}
+                                />
+                                <ToolbarButton
+                                    label="All lowercase"
+                                    icon={<span>aa</span>}
+                                    onClick={() =>
+                                        applyText(
+                                            text.toLowerCase(),
+                                            "Converted to lowercase"
+                                        )
+                                    }
+                                    accent={accent}
+                                />
+                                <ToolbarButton
+                                    label="Title case"
+                                    icon={<span>Ab</span>}
+                                    onClick={() =>
+                                        applyText(
+                                            toTitleCase(text),
+                                            "Title case applied"
+                                        )
+                                    }
+                                    accent={accent}
+                                />
+                                <ToolbarButton
+                                    label="All uppercase"
+                                    icon={<span>AB</span>}
+                                    onClick={() =>
+                                        applyText(
+                                            text.toUpperCase(),
+                                            "Converted to uppercase"
+                                        )
+                                    }
+                                    accent={accent}
+                                />
+                                <ToolbarButton
+                                    label="Random case"
+                                    icon={<span>aA</span>}
+                                    onClick={() =>
+                                        applyText(
+                                            randomCase(text),
+                                            "Random case applied"
+                                        )
+                                    }
+                                    accent={accent}
+                                />
 
-                            
-                        </div>
-
-                    </div>
-
-                </div>
-
-                    <div
-                        className="tf-main-row"
-                        style={{
-                            gridTemplateColumns: showSidePanel
-                                ? "minmax(0, 1fr) 303px"
-                                : "minmax(0, 1fr) 0px",
-                        }}
-                    >
-                        <div
-                            className="tf-side-panel"
-                            style={{
-                                background: "#FFFFFF",
-                                border: "1px solid #E5E8EF",
-                                borderRadius: 14,
-                                padding: 8,
-                                width: "100%",
-                                minWidth: 260,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 12,
-                                willChange: "width",
-                            }}
-                        >
-                            <div style={{ position: "relative" }}>
+                                {/* FIX 1: menu popover con JSX correttamente bilanciato */}
                                 <div
                                     style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        gap: 8,
-                                        flexWrap: "wrap",
-                                        padding: "6px 8px",
-                                        borderRadius: 12,
-                                        background: "rgba(27, 36, 55, 0.03)",
+                                        position: "relative",
+                                        display: "inline-flex",
                                     }}
+                                    ref={toolsMenuRef}
                                 >
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: 6,
-                                            flexWrap: "wrap",
-                                            minWidth: 0,
-                                            flex: "1 1 320px",
-                                        }}
-                                    >
-                                        <ToolbarButton
-                                            label="Capitalize after punctuation"
-                                            icon={<span>.Aa</span>}
-                                            onClick={() =>
-                                                applyText(
-                                                    capitalizeAfterPunctuation(
-                                                        text
-                                                    ),
-                                                    "Sentences updated"
-                                                )
-                                            }
-                                            accent={accent}
-                                        />
-                                        <ToolbarButton
-                                            label="All lowercase"
-                                            icon={<span>aa</span>}
-                                            onClick={() =>
-                                                applyText(
-                                                    text.toLowerCase(),
-                                                    "Converted to lowercase"
-                                                )
-                                            }
-                                            accent={accent}
-                                        />
-                                        <ToolbarButton
-                                            label="Title case"
-                                            icon={<span>Ab</span>}
-                                            onClick={() =>
-                                                applyText(
-                                                    toTitleCase(text),
-                                                    "Title case applied"
-                                                )
-                                            }
-                                            accent={accent}
-                                        />
-                                        <ToolbarButton
-                                            label="All uppercase"
-                                            icon={<span>AB</span>}
-                                            onClick={() =>
-                                                applyText(
-                                                    text.toUpperCase(),
-                                                    "Converted to uppercase"
-                                                )
-                                            }
-                                            accent={accent}
-                                        />
-                                        <ToolbarButton
-                                            label="Random case"
-                                            icon={<span>aA</span>}
-                                            onClick={() =>
-                                                applyText(
-                                                    randomCase(text),
-                                                    "Random case applied"
-                                                )
-                                            }
-                                            accent={accent}
-                                        />
-
-                            <div
-                                style={{
-                                    position: "relative",
-                                    display: "inline-flex",
-                                }}
-                                ref={toolsMenuRef}
-                            >
-                                            <ToolbarButton
-                                                label="More tools"
-                                                icon={<span>•••</span>}
-                                                onClick={() =>
-                                                    setToolsOpen((prev) => !prev)
+                                    <ToolbarButton
+                                        label="More tools"
+                                        icon={<span>•••</span>}
+                                        onClick={() =>
+                                            setToolsOpen((prev) => {
+                                                const next = !prev
+                                                if (next) {
+                                                    setActiveSection("none")
                                                 }
-                                                accent={accent}
-                                                selected={toolsOpen}
-                                            />
+                                                return next
+                                            })
+                                        }
+                                        accent={accent}
+                                        selected={toolsOpen}
+                                    />
 
-                                            {toolsOpen && (
+                                    {toolsOpen && (
+                                        <div
+                                            className="tf-menu-popover tf-tools-menu"
+                                            style={{
+                                                position: "absolute",
+                                                top: "calc(100% + 8px)",
+                                                left: 0,
+                                                zIndex: 40,
+                                                alignItems: "flex-start",
+                                                maxWidth: "92vw",
+                                                width: "max-content",
+                                            }}
+                                        >
+                                            {/* Pannello sezioni */}
                                             <div
-                                                className="tf-menu-popover tf-tools-menu"
+                                                className="tf-tools-panel"
                                                 style={{
-                                                    position: "absolute",
-                                                    top: "calc(100% + 8px)",
-                                                    left: 0,
-                                                    zIndex: 40,
-                                                    alignItems: "flex-start",
-                                                    maxWidth: "92vw",
-                                                    width: "max-content",
+                                                    width: "min(320px, 90vw)",
+                                                    background: "#FFFFFF",
+                                                    border: "1px solid #E5E8EF",
+                                                    borderRadius: 12,
+                                                    boxShadow:
+                                                        "0 12px 30px rgba(0,0,0,0.14)",
+                                                    padding: 8,
                                                 }}
                                             >
-                                                <div
-                                                    className="tf-tools-panel"
-                                                    style={{
-                                                        width: "min(320px, 90vw)",
-                                                        background:
-                                                            "#FFFFFF",
-                                                        border: "1px solid #E5E8EF",
-                                                        borderRadius: 12,
-                                                        boxShadow:
-                                                            "0 12px 30px rgba(0,0,0,0.14)",
-                                                        padding: 8,
-                                                    }}
-                                                >
-                                                        {[
-                                                            "transform",
-                                                            "lines",
-                                                            "cleanup",
-                                                            "replace",
-                                                        ].map((sectionKey) => (
-                                                            <button
-                                                                key={sectionKey}
-                                                                onClick={() =>
-                                                                    setActiveSection(
-                                                                        sectionKey as any
-                                                                    )
-                                                                }
-                                                                onMouseEnter={() =>
-                                                                    setActiveSection(
-                                                                        sectionKey as any
-                                                                    )
-                                                                }
-                                                                className="tf-menu-button"
-                                                                data-selected={
-                                                                    activeSection ===
-                                                                    sectionKey
-                                                                        ? "true"
-                                                                        : "false"
-                                                                }
-                                                                style={{
-                                                                    width: "100%",
-                                                                    background:
-                                                                        "transparent",
-                                                                    borderRadius: 6,
-                                                                    padding:
-                                                                        "8px 8px",
-                                                                    display:
-                                                                        "flex",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    justifyContent:
-                                                                        "space-between",
-                                                                    fontSize: 14,
-                                                                    color: "#1B2437",
-                                                                    cursor: "pointer",
-                                                                    whiteSpace:
-                                                                        "normal",
-                                                                }}
-                                                            >
-                                                                <span
-                                                                    style={{
-                                                                        display:
-                                                                            "flex",
-                                                                        alignItems:
-                                                                            "center",
-                                                                        gap: 6,
-                                                                        flex: 1,
-                                                                        minWidth: 0,
-                                                                    }}
-                                                                >
-                                                                    {sectionMeta[sectionKey]?.icon}
-                                                                    {sectionMeta[sectionKey]?.label}
-                                                                </span>
-                                                                <ChevronRight size={14} />
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                                {(
+                                                    [
+                                                        "transform",
+                                                        "lines",
+                                                        "cleanup",
+                                                        "replace",
+                                                    ] as const
+                                                ).map((sectionKey) => (
+                                                    <button
+                                                        key={sectionKey}
+                                                        onClick={() =>
+                                                            setActiveSection(
+                                                                sectionKey
+                                                            )
+                                                        }
+                                                        onMouseEnter={() =>
+                                                            setActiveSection(
+                                                                sectionKey
+                                                            )
+                                                        }
+                                                        className="tf-menu-button"
+                                                        data-selected={
+                                                            activeSection ===
+                                                            sectionKey
+                                                                ? "true"
+                                                                : "false"
+                                                        }
+                                                        style={{
+                                                            width: "100%",
+                                                            background:
+                                                                "transparent",
+                                                            borderRadius: 6,
+                                                            padding: "8px 8px",
+                                                            display: "flex",
+                                                            alignItems:
+                                                                "center",
+                                                            justifyContent:
+                                                                "space-between",
+                                                            fontSize: 14,
+                                                            color: "#1B2437",
+                                                            cursor: "pointer",
+                                                            whiteSpace:
+                                                                "normal",
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                display: "flex",
+                                                                alignItems:
+                                                                    "center",
+                                                                gap: 6,
+                                                                flex: 1,
+                                                                minWidth: 0,
+                                                            }}
+                                                        >
+                                                            {sectionMeta[sectionKey]?.icon}
+                                                            {sectionMeta[sectionKey]?.label}
+                                                        </span>
+                                                        <ChevronRight
+                                                            size={14}
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
 
+                                            {/* Pannello gruppi (visibile solo se sezione selezionata) */}
+                                            {activeSection !== "none" && (
                                                 <div
                                                     className="tf-tools-panel"
                                                     style={{
                                                         width: "min(300px, 90vw)",
-                                                        background:
-                                                            "#FFFFFF",
+                                                        background: "#FFFFFF",
                                                         border: "1px solid #E5E8EF",
                                                         borderRadius: 12,
                                                         boxShadow:
@@ -1506,247 +1442,256 @@ applyText(
                                                         padding: 8,
                                                     }}
                                                 >
-                                                        {(activeSection ===
-                                                        "transform"
-                                                            ? ["reversals", "sortings"]
-                                                            : activeSection ===
-                                                                "lines"
-                                                              ? [
-                                                                    "duplicates",
-                                                                    "linebreaks",
-                                                                    "prefix",
-                                                                    "create_breaks",
-                                                                ]
-                                                              : activeSection ===
-                                                                  "cleanup"
-                                                                ? [
-                                                                      "spaces",
-                                                                      "accents",
-                                                                      "numbers",
-                                                                  ]
-                                                                : ["replace", "filter"]
-                                                        ).map((groupKey) => (
-                                                            <button
-                                                                key={groupKey}
-                                                                onClick={() => {
-                                                                    setActiveGroup(
-                                                                        groupKey
-                                                                    )
-                                                                    setToolsOpen(
-                                                                        false
-                                                                    )
-                                                                }}
-                                                                className="tf-menu-button"
-                                                                data-selected={
-                                                                    activeGroup ===
+                                                    {(activeSection ===
+                                                    "transform"
+                                                        ? [
+                                                              "reversals",
+                                                              "sortings",
+                                                          ]
+                                                        : activeSection ===
+                                                            "lines"
+                                                          ? [
+                                                                "duplicates",
+                                                                "linebreaks",
+                                                                "prefix",
+                                                                "create_breaks",
+                                                            ]
+                                                          : activeSection ===
+                                                              "cleanup"
+                                                            ? [
+                                                                  "spaces",
+                                                                  "accents",
+                                                                  "numbers",
+                                                              ]
+                                                            : [
+                                                                  "replace",
+                                                                  "filter",
+                                                              ]
+                                                    ).map((groupKey) => (
+                                                        <button
+                                                            key={groupKey}
+                                                            // FIX 3: onClick apre il pannello;
+                                                            // onMouseEnter aggiorna solo l'hover
+                                                            // senza aprire il side panel.
+                                                            onClick={() => {
+                                                                setActiveGroup(
                                                                     groupKey
-                                                                        ? "true"
-                                                                        : "false"
-                                                                }
-                                                                style={{
-                                                                    width: "100%",
-                                                                    background:
-                                                                        "transparent",
-                                                                    borderRadius: 6,
-                                                                    padding:
-                                                                        "8px 8px",
-                                                                    display:
-                                                                        "flex",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    gap: 6,
-                                                                    fontSize: 14,
-                                                                    color: "#1B2437",
-                                                                    cursor: "pointer",
-                                                                    textAlign:
-                                                                        "left",
+                                                                )
+                                                                setToolsOpen(
+                                                                    false
+                                                                )
+                                                            }}
+                                                            onMouseEnter={() =>
+                                                                setHoveredGroup(
+                                                                    groupKey
+                                                                )
+                                                            }
+                                                            onMouseLeave={() =>
+                                                                setHoveredGroup(
+                                                                    "none"
+                                                                )
+                                                            }
+                                                            className="tf-menu-button"
+                                                            data-selected={
+                                                                hoveredGroup ===
+                                                                groupKey
+                                                                    ? "true"
+                                                                    : "false"
+                                                            }
+                                                            style={{
+                                                                width: "100%",
+                                                                background:
+                                                                    "transparent",
+                                                                borderRadius: 6,
+                                                                padding:
+                                                                    "8px 8px",
+                                                                display: "flex",
+                                                                alignItems:
+                                                                    "center",
+                                                                gap: 6,
+                                                                fontSize: 14,
+                                                                color: "#1B2437",
+                                                                cursor: "pointer",
+                                                                textAlign:
+                                                                    "left",
                                                                 whiteSpace:
                                                                     "normal",
                                                             }}
                                                         >
-                                                                {groupMeta[groupKey]?.icon}
-                                                                {groupMeta[groupKey]?.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                                            {groupMeta[groupKey]?.icon}
+                                                            {groupMeta[groupKey]?.label}
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            gap: 6,
-                                            flexWrap: "wrap",
-                                            justifyContent: "flex-end",
-                                            flex: "0 1 auto",
-                                        }}
-                                    >
-                                        <ToolbarButton
-                                            label="Undo"
-                                            icon={<Undo2 size={16} />}
-                                            onClick={undo}
-                                            accent={accent}
-                                            variant="icon"
-                                        />
-                                        <ToolbarButton
-                                            label="Redo"
-                                            icon={<Redo2 size={16} />}
-                                            onClick={redo}
-                                            accent={accent}
-                                            variant="icon"
-                                        />
-                                        <ToolbarButton
-                                            label="Copy"
-                                            icon={<Copy size={16} />}
-                                            onClick={copyText}
-                                            accent={accent}
-                                            variant="icon"
-                                        />
-                                        <ToolbarButton
-                                            label="Clear"
-                                            icon={<Trash2 size={16} />}
-                                            onClick={clearAll}
-                                            accent={accent}
-                                            variant="icon"
-                                        />
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
-                            <textarea
-                                value={text}
-                                ref={textareaRef}
-                                placeholder={placeholder}
-                                onChange={(e) => onTextChange(e.target.value)}
-                                onBlur={commitTextSnapshot}
-                                style={{
-                                    width: "100%",
-                                    minHeight: 260,
-                                    resize: "vertical",
-                                    border: "none",
-                                    outline: "none",
-                                    background: "transparent",
-                                    color: textColor,
-                                    fontSize,
-                                    lineHeight: 1.5,
-                                    fontFamily: "inherit",
-                                    boxSizing: "border-box",
-                                }}
-                            />
-
+                            {/* Undo / Redo / Copy / Clear */}
                             <div
-                                className="tf-stats"
-                                style={{ margin: "8px -8px -8px" }}
+                                style={{
+                                    display: "flex",
+                                    gap: 6,
+                                    flexWrap: "wrap",
+                                    justifyContent: "flex-end",
+                                    flex: "0 1 auto",
+                                }}
                             >
-                                {[
-                                    {
-                                        label: "Effective lines",
-                                        value: effectiveLines,
-                                    },
-                                    {
-                                        label: "Visible lines",
-                                        value: visibleLines,
-                                    },
-                                    { label: "Words", value: words },
-                                    { label: "Characters", value: chars },
-                                ].map((item, index) => (
-                                    <div
-                                        key={item.label}
-                                        className="tf-stat"
-                                    >
-                                        <div
-                                            style={{
-                                                fontSize: 14,
-                                                color: "#1B2437",
-                                                flex: "1 1 auto",
-                                                minWidth: 0,
-                                            }}
-                                        >
-                                            {item.label}:{" "}
-                                            <strong>{item.value}</strong>
-                                        </div>
-                                        <button
-                                            className="tf-panel-icon-button"
-                                            onClick={() =>
-                                                copyStat(
-                                                    item.label,
-                                                    item.value
-                                                )
-                                            }
-                                            aria-label={`Copy ${item.label}`}
-                                        >
-                                            <Copy size={16} />
-                                        </button>
-                                    </div>
-                                ))}
+                                <ToolbarButton
+                                    label="Undo"
+                                    icon={<Undo2 size={16} />}
+                                    onClick={undo}
+                                    accent={accent}
+                                    variant="icon"
+                                />
+                                <ToolbarButton
+                                    label="Redo"
+                                    icon={<Redo2 size={16} />}
+                                    onClick={redo}
+                                    accent={accent}
+                                    variant="icon"
+                                />
+                                <ToolbarButton
+                                    label="Copy"
+                                    icon={<Copy size={16} />}
+                                    onClick={copyText}
+                                    accent={accent}
+                                    variant="icon"
+                                />
+                                <ToolbarButton
+                                    label="Clear"
+                                    icon={<Trash2 size={16} />}
+                                    onClick={clearAll}
+                                    accent={accent}
+                                    variant="icon"
+                                />
                             </div>
                         </div>
+                    </div>
 
+                    {/* Textarea */}
+                    <textarea
+                        value={text}
+                        ref={textareaRef}
+                        placeholder={placeholder}
+                        onChange={(e) => onTextChange(e.target.value)}
+                        onBlur={commitTextSnapshot}
+                        style={{
+                            width: "100%",
+                            minHeight: 260,
+                            resize: "vertical",
+                            border: "none",
+                            outline: "none",
+                            background: "transparent",
+                            color: textColor,
+                            fontSize,
+                            lineHeight: 1.5,
+                            fontFamily: "inherit",
+                            boxSizing: "border-box",
+                        }}
+                    />
+
+                    {/* Stats */}
+                    <div
+                        className="tf-stats"
+                        style={{ margin: "8px -8px -8px" }}
+                    >
+                        {[
+                            { label: "Effective lines", value: effectiveLines },
+                            { label: "Visible lines", value: visibleLines },
+                            { label: "Words", value: words },
+                            { label: "Characters", value: chars },
+                        ].map((item) => (
+                            <div key={item.label} className="tf-stat">
+                                <div
+                                    style={{
+                                        fontSize: 14,
+                                        color: "#1B2437",
+                                        flex: "1 1 auto",
+                                        minWidth: 0,
+                                    }}
+                                >
+                                    {item.label}:{" "}
+                                    <strong>{item.value}</strong>
+                                </div>
+                                <button
+                                    className="tf-panel-icon-button"
+                                    onClick={() =>
+                                        copyStat(item.label, item.value)
+                                    }
+                                    aria-label={`Copy ${item.label}`}
+                                >
+                                    <Copy size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Colonna destra: side panel strumenti */}
+                {showSidePanel && (
+                    <div
+                        className="tf-side-panel"
+                        style={{
+                            background: "#FFFFFF",
+                            border: "1px solid #E5E8EF",
+                            borderRadius: 14,
+                            padding: 8,
+                            width: "100%",
+                            minWidth: 260,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 12,
+                            opacity: 1,
+                            transform: "translateX(0)",
+                            transition: "opacity 220ms ease, transform 220ms ease",
+                        }}
+                    >
+                        {/* Header pannello */}
                         <div
                             style={{
-                                background: "#FFFFFF",
-                                border: "1px solid #E5E8EF",
-                                borderRadius: 14,
-                                padding: 8,
-                                width: "100%",
-                                minWidth: 0,
                                 display: "flex",
-                                flexDirection: "column",
-                                gap: 24,
-                                overflow: "hidden",
-                                opacity: showSidePanel ? 1 : 0,
-                                transform: showSidePanel
-                                    ? "translateX(0)"
-                                    : "translateX(8px)",
-                                pointerEvents: showSidePanel ? "auto" : "none",
-                                transition:
-                                    "opacity 220ms ease, transform 220ms ease",
+                                alignItems: "center",
+                                gap: 8,
                             }}
                         >
                             <div
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 8,
+                                    gap: 4,
+                                    flex: "1 1 auto",
+                                    minWidth: 0,
                                 }}
                             >
+                                {panelHeader.icon}
                                 <div
                                     style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 4,
-                                        flex: "1 1 auto",
-                                        minWidth: 0,
+                                        fontSize: 14,
+                                        fontWeight: 600,
+                                        color: "#1B2437",
                                     }}
                                 >
-                                    {panelHeader.icon}
-                                    <div
-                                        style={{
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            color: "#1B2437",
-                                        }}
-                                    >
-                                        {panelHeader.title}
-                                    </div>
+                                    {panelHeader.title}
                                 </div>
-                                <button
-                                    className="tf-panel-icon-button"
-                                    onClick={() => setActiveGroup("none")}
-                                    aria-label="Close panel"
-                                >
-                                    <X size={16} />
-                                </button>
                             </div>
-
-                            <div className="tf-panel-content">
-                                {panelContent}
-                            </div>
+                            <button
+                                className="tf-panel-icon-button"
+                                onClick={() => setActiveGroup("none")}
+                                aria-label="Close panel"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
-                    </div>
 
+                        <div className="tf-panel-content">{panelContent}</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Toast */}
             {toast && (
                 <div
                     style={{
@@ -1784,14 +1729,8 @@ TextFormatterFramerResponsive.defaultProps = {
 }
 
 addPropertyControls(TextFormatterFramerResponsive, {
-    title: {
-        type: ControlType.String,
-        title: "Title",
-    },
-    placeholder: {
-        type: ControlType.String,
-        title: "Placeholder",
-    },
+    title: { type: ControlType.String, title: "Title" },
+    placeholder: { type: ControlType.String, title: "Placeholder" },
     height: {
         type: ControlType.Number,
         title: "Height",
@@ -1800,22 +1739,10 @@ addPropertyControls(TextFormatterFramerResponsive, {
         step: 20,
         unit: "px",
     },
-    accent: {
-        type: ControlType.Color,
-        title: "Accent",
-    },
-    accent2: {
-        type: ControlType.Color,
-        title: "Accent 2",
-    },
-    background: {
-        type: ControlType.Color,
-        title: "Background",
-    },
-    textColor: {
-        type: ControlType.Color,
-        title: "Text",
-    },
+    accent: { type: ControlType.Color, title: "Accent" },
+    accent2: { type: ControlType.Color, title: "Accent 2" },
+    background: { type: ControlType.Color, title: "Background" },
+    textColor: { type: ControlType.Color, title: "Text" },
     radius: {
         type: ControlType.Number,
         title: "Radius",
