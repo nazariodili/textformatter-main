@@ -1,16 +1,14 @@
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import {
-    ChevronDown,
     ChevronRight,
     Undo2,
     Redo2,
-    MousePointerClick,
     Copy,
-    Eraser,
     Trash2,
     RefreshCw,
     ArrowUpDown,
+    ArrowRight,
     CopyMinus,
     Pilcrow,
     Tag,
@@ -19,7 +17,10 @@ import {
     Languages,
     Hash,
     Search,
+    TriangleDashed,
+    Eraser,
     Filter,
+    X,
 } from "lucide-react"
 
 type Props = {
@@ -29,10 +30,7 @@ type Props = {
     accent: string
     accent2: string
     background: string
-    panelColor: string
     textColor: string
-    mutedTextColor: string
-    borderColor: string
     radius: number
     fontSize: number
 }
@@ -296,81 +294,6 @@ function replaceWordInsideLines(
         .join("\n")
 }
 
-function ActionButton({
-    label,
-    icon,
-    iconOnly = false,
-    onClick,
-    accent,
-    secondary = false,
-    selected = false,
-}: {
-    label: string
-    icon?: React.ReactNode
-    iconOnly?: boolean
-    onClick: () => void
-    accent: string
-    secondary?: boolean
-    selected?: boolean
-}) {
-    const baseBg = secondary ? "#FFFFFF" : accent
-    const baseBorder = secondary ? "#E5E8EF" : accent
-    const baseShadow = secondary
-        ? "0 1px 0 rgba(10, 15, 30, 0.02)"
-        : "0 1px 2px rgba(12, 16, 32, 0.16)"
-    const hoverBg = secondary ? "#F5F7FB" : accent
-    const hoverBorder = secondary ? "#DDE3EC" : accent
-    const hoverShadow = secondary
-        ? "0 1px 0 rgba(10, 15, 30, 0.04)"
-        : "0 2px 6px rgba(12, 16, 32, 0.18)"
-    const selectedBg = secondary ? "#E9EEF6" : accent
-    const selectedBorder = secondary ? "#D6DDE8" : accent
-
-    return (
-        <button
-            onClick={onClick}
-            className="tf-action-button"
-            data-icon-only={iconOnly ? "true" : "false"}
-            data-selected={selected ? "true" : "false"}
-            data-variant={secondary ? "secondary" : "primary"}
-            style={{
-                width: iconOnly ? 28 : "100%",
-                minWidth: iconOnly ? 28 : undefined,
-                minHeight: 28,
-                height: iconOnly ? 28 : "auto",
-                padding: iconOnly ? 0 : "6px 8px",
-                borderRadius: 6,
-                color: secondary ? "#1B2437" : "white",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                textAlign: iconOnly ? "center" : "left",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: iconOnly ? "center" : "flex-start",
-                gap: 7,
-                lineHeight: 1.2,
-                transition:
-                    "transform 120ms ease, box-shadow 140ms ease, filter 140ms ease",
-                boxSizing: "border-box",
-                ["--btn-bg" as any]: baseBg,
-                ["--btn-border" as any]: baseBorder,
-                ["--btn-shadow" as any]: baseShadow,
-                ["--btn-bg-hover" as any]: hoverBg,
-                ["--btn-border-hover" as any]: hoverBorder,
-                ["--btn-shadow-hover" as any]: hoverShadow,
-                ["--btn-bg-selected" as any]: selectedBg,
-                ["--btn-border-selected" as any]: selectedBorder,
-            }}
-            aria-label={label}
-            title={label}
-        >
-            {icon}
-            {!iconOnly && <span>{label}</span>}
-        </button>
-    )
-}
-
 function ToolbarButton({
     label,
     icon,
@@ -430,11 +353,21 @@ function ToolbarButton({
     )
 }
 
-function InputField(
-    props: React.InputHTMLAttributes<HTMLInputElement> & { label?: string }
-) {
-    const { label, ...rest } = props
-
+function IconInput({
+    label,
+    icon,
+    value,
+    onChange,
+    placeholder,
+    inputMode,
+}: {
+    label?: string
+    icon: React.ReactNode
+    value: string
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+    placeholder?: string
+    inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+}) {
     return (
         <div style={{ display: "grid", gap: 6 }}>
             {label && (
@@ -442,22 +375,33 @@ function InputField(
                     {label}
                 </div>
             )}
-            <input
-                {...rest}
-                className="tf-input"
-                style={{
-                    width: "100%",
-                    minHeight: 34,
-                    borderRadius: 12,
-                    padding: "8px 10px",
-                    outline: "none",
-                    fontSize: 14,
-                    boxSizing: "border-box",
-                    color: "#1B2437",
-                    ...(rest.style || {}),
-                }}
-            />
+            <div className="tf-input-row">
+                <div style={{ display: "grid", placeItems: "center" }}>
+                    {icon}
+                </div>
+                <input
+                    className="tf-input-field"
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    inputMode={inputMode}
+                />
+            </div>
         </div>
+    )
+}
+
+function SecondaryCta({
+    label,
+    onClick,
+}: {
+    label: string
+    onClick: () => void
+}) {
+    return (
+        <button className="tf-cta-secondary" onClick={onClick}>
+            {label}
+        </button>
     )
 }
 
@@ -483,122 +427,6 @@ function Card({
     )
 }
 
-function Accordion({
-    title,
-    subtitle,
-    icon,
-    defaultOpen = false,
-    children,
-}: {
-    title: string
-    subtitle?: string
-    icon?: React.ReactNode
-    defaultOpen?: boolean
-    children: React.ReactNode
-}) {
-    const [open, setOpen] = React.useState(defaultOpen)
-
-    return (
-        <div
-            style={{
-                border: "1px solid #E2E7F0",
-                borderRadius: 10,
-                background: "white",
-                overflow: "hidden",
-                boxShadow: "0 1px 1px rgba(20, 28, 45, 0.04)",
-            }}
-        >
-            <button
-                onClick={() => setOpen(!open)}
-                style={{
-                    width: "100%",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    padding: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    textAlign: "left",
-                }}
-            >
-                <div style={{ minWidth: 0 }}>
-                    <div
-                        style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                        }}
-                    >
-                        {icon}
-                        <span>{title}</span>
-                    </div>
-                    {subtitle && (
-                        <div
-                            style={{
-                                fontSize: 11,
-                                color: "#6B7385",
-                                marginTop: 4,
-                                lineHeight: 1.35,
-                            }}
-                        >
-                            {subtitle}
-                        </div>
-                    )}
-                </div>
-
-                <div
-                    style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 6,
-                        display: "grid",
-                        placeItems: "center",
-                        border: "1px solid #E4E8F0",
-                        background: "#F7F9FC",
-                        flex: "0 0 auto",
-                        transform: open ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 260ms ease",
-                        fontSize: 14,
-                        fontWeight: 700,
-                    }}
-                >
-                    <ChevronDown size={16} strokeWidth={2.4} />
-                </div>
-            </button>
-
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateRows: open ? "1fr" : "0fr",
-                    transition: "grid-template-rows 320ms ease",
-                }}
-            >
-                <div style={{ overflow: "hidden" }}>
-                    <div
-                        style={{
-                            padding: open
-                                ? "0 10px 10px 10px"
-                                : "0 10px 0 10px",
-                            opacity: open ? 1 : 0,
-                            transform: open
-                                ? "translateY(0px)"
-                                : "translateY(-6px)",
-                            transition:
-                                "opacity 220ms ease, transform 280ms ease, padding 280ms ease",
-                        }}
-                    >
-                        {children}
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}
-
 export default function TextFormatterFramerResponsive(props: Props) {
     const {
         title,
@@ -607,10 +435,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
         accent,
         accent2,
         background,
-        panelColor,
         textColor,
-        mutedTextColor,
-        borderColor,
         radius,
         fontSize,
     } = props
@@ -631,9 +456,11 @@ export default function TextFormatterFramerResponsive(props: Props) {
     const [filterWord, setFilterWord] = React.useState("")
     const [toolsOpen, setToolsOpen] = React.useState(false)
     const [activeSection, setActiveSection] = React.useState<
-        "trasforma" | "righe" | "pulisci" | "sostituisci"
-    >("trasforma")
-    const [activeGroup, setActiveGroup] = React.useState("inversioni")
+        "none" | "transform" | "lines" | "cleanup" | "replace"
+    >("none")
+    const [activeGroup, setActiveGroup] = React.useState("none")
+
+    const toolsMenuRef = React.useRef<HTMLDivElement | null>(null)
 
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
@@ -703,39 +530,517 @@ export default function TextFormatterFramerResponsive(props: Props) {
     const copyText = async () => {
         try {
             await navigator.clipboard.writeText(text)
-            showToast("Testo copiato")
+            showToast("Text copied")
         } catch {
-            showToast("Copia non riuscita")
+            showToast("Copy failed")
         }
     }
 
-    const selectAll = () => {
-        if (!textareaRef.current) return
-        textareaRef.current.focus()
-        textareaRef.current.select()
-        showToast("Testo selezionato")
+    const copyStat = async (label: string, value: number) => {
+        try {
+            await navigator.clipboard.writeText(String(value))
+            showToast(`${label} copied`)
+        } catch {
+            showToast("Copy failed")
+        }
     }
 
     const clearAll = () => {
-        applyText("", "Testo cancellato")
+        applyText("", "Text cleared")
     }
 
-    const resetFields = () => {
-        setReplaceBreaksWith("")
-        setPrefix("")
-        setSuffix("")
-        setBreakAfter("")
-        setEveryChars("")
-        setSearchValue("")
-        setReplaceValue("")
-        setFilterWord("")
-        showToast("Campi azzerati")
-    }
+    React.useEffect(() => {
+        if (!toolsOpen) return
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node
+            if (toolsMenuRef.current && !toolsMenuRef.current.contains(target)) {
+                setToolsOpen(false)
+            }
+        }
+        window.addEventListener("mousedown", handleClickOutside)
+        return () =>
+            window.removeEventListener("mousedown", handleClickOutside)
+    }, [toolsOpen])
 
     const effectiveLines = countEffectiveLines(text)
     const visibleLines = visibleLinesEstimate(text)
     const words = countWords(text)
     const chars = text.length
+
+    const showSidePanel = activeGroup !== "none"
+
+    const sectionMeta: Record<
+        string,
+        { label: string; icon: React.ReactNode }
+    > = {
+        transform: { label: "Transform text", icon: <Sparkles size={16} /> },
+        lines: { label: "Lines and structure", icon: <Pilcrow size={16} /> },
+        cleanup: { label: "Content cleanup", icon: <Eraser size={16} /> },
+        replace: {
+            label: "Find, replace, and filter",
+            icon: <Search size={16} />,
+        },
+    }
+
+    const groupMeta: Record<
+        string,
+        { label: string; icon: React.ReactNode }
+    > = {
+        reversals: { label: "Reversals", icon: <RefreshCw size={16} /> },
+        sortings: { label: "Sortings", icon: <ArrowUpDown size={16} /> },
+        duplicates: { label: "Duplicates", icon: <CopyMinus size={16} /> },
+        linebreaks: { label: "Line breaks", icon: <Pilcrow size={16} /> },
+        prefix: { label: "Prefix and suffix", icon: <Tag size={16} /> },
+        create_breaks: {
+            label: "Create line breaks",
+            icon: <Scissors size={16} />,
+        },
+        spaces: { label: "Empty lines and spaces", icon: <Sparkles size={16} /> },
+        accents: { label: "Accents", icon: <Languages size={16} /> },
+        numbers: { label: "Number sorting", icon: <Hash size={16} /> },
+        replace: { label: "Replace text", icon: <Search size={16} /> },
+        filter: { label: "Filter lines", icon: <Filter size={16} /> },
+    }
+
+    const panelHeader = (() => {
+        if (activeGroup === "none") return { title: "", icon: null }
+        const meta = groupMeta[activeGroup]
+        if (!meta) return { title: "", icon: null }
+        return { title: meta.label, icon: meta.icon }
+    })()
+
+    const panelContent = (() => {
+        switch (activeGroup) {
+            case "reversals":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Reverse text"
+                            onClick={() =>
+applyText(reverseText(text), "Text reversed")
+                            }
+                        />
+                        <SecondaryCta
+                            label="Reverse words"
+                            onClick={() =>
+applyText(
+                                    reverseWords(text),
+                                    "Words reversed"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Reverse letters in each word"
+                            onClick={() =>
+applyText(
+                                    reverseLettersEachWord(text),
+                                    "Letters reversed"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Reverse line order"
+                            onClick={() =>
+applyText(
+                                    reverseLinesOrder(text),
+                                    "Line order reversed"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "sortings":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Sort lines A–Z"
+                            onClick={() =>
+applyText(
+                                    sortLinesAZ(text),
+                                    "Lines sorted A–Z"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Sort lines Z–A"
+                            onClick={() =>
+applyText(
+                                    sortLinesZA(text),
+                                    "Lines sorted Z–A"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Sort by length"
+                            onClick={() =>
+applyText(
+                                    sortLinesByLength(text),
+                                    "Lines sorted by length"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Add line numbers"
+                            onClick={() =>
+applyText(
+                                    addLineNumbers(text),
+                                    "Numbering added"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "duplicates":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Words uniche A-Z"
+                            onClick={() =>
+applyText(
+                                    uniqueWordsAZ(text),
+                                    "Duplicates rimossi"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Words uniche Z-A"
+                            onClick={() =>
+applyText(
+                                    uniqueWordsZA(text),
+                                    "Duplicates rimossi"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Remove duplicate lines (case-insensitive)"
+                            onClick={() =>
+applyText(
+                                    removeDuplicateLines(text, false),
+                                    "Duplicate lines removed"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Remove duplicate lines (case-sensitive)"
+                            onClick={() =>
+applyText(
+                                    removeDuplicateLines(text, true),
+                                    "Duplicate lines removed"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "linebreaks":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <IconInput
+                            label="Replace all line breaks with"
+                            icon={<Pilcrow size={18} />}
+                            value={replaceBreaksWith}
+                            onChange={(e) =>
+                                setReplaceBreaksWith(e.target.value)
+                            }
+                        />
+                        <SecondaryCta
+                            label="Apply"
+                            onClick={() =>
+applyText(
+                                    replaceLineBreaks(
+                                        text,
+                                        replaceBreaksWith
+                                    ),
+                                    "Line breaks sostituiti"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Remove all line breaks"
+                            onClick={() =>
+applyText(
+                                    removeAllLineBreaks(text),
+                                    "Line breaks rimossi"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "prefix":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <IconInput
+                            label="Prefix"
+                            icon={<Tag size={18} />}
+                            value={prefix}
+                            onChange={(e) => setPrefix(e.target.value)}
+                        />
+                        <IconInput
+                            label="Suffix"
+                            icon={<Tag size={18} />}
+                            value={suffix}
+                            onChange={(e) => setSuffix(e.target.value)}
+                        />
+                        <SecondaryCta
+                            label="Apply to all lines"
+                            onClick={() =>
+applyText(
+                                    addPrefixSuffixToLines(
+                                        text,
+                                        prefix,
+                                        suffix
+                                    ),
+                                    "Prefix and suffix applicati"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "create_breaks":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <IconInput
+                            label="After word or character"
+                            icon={<Scissors size={18} />}
+                            value={breakAfter}
+                            onChange={(e) => setBreakAfter(e.target.value)}
+                        />
+                        <SecondaryCta
+                            label="Insert line break"
+                            onClick={() =>
+applyText(
+                                    createBreakAfterToken(text, breakAfter),
+                                    "Line breaks inseriti"
+                                )
+                            }
+                        />
+                        <IconInput
+                            label="Every X characters"
+                            icon={<Hash size={18} />}
+                            value={everyChars}
+                            onChange={(e) => setEveryChars(e.target.value)}
+                            inputMode="numeric"
+                        />
+                        <SecondaryCta
+                            label="Apply every X characters"
+                            onClick={() =>
+applyText(
+                                    createBreakEveryNChars(
+                                        text,
+                                        Number(everyChars)
+                                    ),
+                                    "Line breaks creati"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "spaces":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Remove empty lines"
+                            onClick={() =>
+applyText(
+                                    removeEmptyLines(text),
+                                    "Empty lines removed"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Reduce multiple empty lines"
+                            onClick={() =>
+applyText(
+                                    reduceMultipleEmptyLines(text),
+                                    "Empty lines reduced"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Remove double spaces (one pass)"
+                            onClick={() =>
+applyText(
+                                    removeDoubleSpacesOnce(text),
+                                    "Double spaces reduced"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Remove double spaces (all)"
+                            onClick={() =>
+applyText(
+                                    removeDoubleSpacesAll(text),
+                                    "Double spaces removed"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "accents":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Remove accents"
+                            onClick={() =>
+applyText(
+                                    removeAccents(text),
+                                    "Accents rimossi"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Accents → apostrofo"
+                            onClick={() =>
+applyText(
+                                    accentToApostrophe(text),
+                                    "Accents convertiti"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "numbers":
+                return (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        <SecondaryCta
+                            label="Sort numbers separated by space"
+                            onClick={() =>
+applyText(
+                                    sortNumbersInLine(text, "space"),
+                                    "Numbers sorted"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Sort numbers separated by comma"
+                            onClick={() =>
+applyText(
+                                    sortNumbersInLine(text, "comma"),
+                                    "Numbers sorted"
+                                )
+                            }
+                        />
+                        <SecondaryCta
+                            label="Sort numeric lines"
+                            onClick={() =>
+applyText(
+                                    sortNumericLines(text),
+                                    "Numeric lines sorted"
+                                )
+                            }
+                        />
+                    </div>
+                )
+            case "filter":
+                return (
+                    <div
+                        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                        <IconInput
+                            label="Filter word"
+                            icon={<Filter size={18} />}
+                            value={filterWord}
+                            onChange={(e) => setFilterWord(e.target.value)}
+                            placeholder="Filter word..."
+                        />
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                justifyContent: "flex-end",
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <SecondaryCta
+                                label="Extract lines"
+                                onClick={() =>
+                                    applyText(
+                                        extractLinesWithWord(text, filterWord),
+                                        "Lines extracted"
+                                    )
+                                }
+                            />
+                            <SecondaryCta
+                                label="Remove lines"
+                                onClick={() =>
+                                    applyText(
+                                        removeLinesWithWord(text, filterWord),
+                                        "Lines removed"
+                                    )
+                                }
+                            />
+                            <SecondaryCta
+                                label="Keep lines"
+                                onClick={() =>
+                                    applyText(
+                                        keepOnlyLinesWithWord(text, filterWord),
+                                        "Filter applied"
+                                    )
+                                }
+                            />
+                        </div>
+                    </div>
+                )
+            case "none":
+                return null
+            case "replace":
+            default:
+                return (
+                    <div
+                        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                        <IconInput
+                            label="Find"
+                            icon={<Search size={18} />}
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Find..."
+                        />
+                        <IconInput
+                            label="Replace with"
+                            icon={<ArrowRight size={18} />}
+                            value={replaceValue}
+                            onChange={(e) => setReplaceValue(e.target.value)}
+                            placeholder="Replace with..."
+                        />
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                justifyContent: "flex-end",
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <SecondaryCta
+                                label="Replace inside each line"
+                                onClick={() =>
+                                    applyText(
+                                        replaceWordInsideLines(
+                                            text,
+                                            searchValue,
+                                            replaceValue
+                                        ),
+                                        "Per-line replacement completed"
+                                    )
+                                }
+                            />
+                            <SecondaryCta
+                                label="Replace all"
+                                onClick={() =>
+                                    applyText(
+                                        replaceTextAll(
+                                            text,
+                                            searchValue,
+                                            replaceValue
+                                        ),
+                                        "Replacement completed"
+                                    )
+                                }
+                            />
+                        </div>
+                    </div>
+                )
+        }
+    })()
 
     return (
         <div
@@ -744,35 +1049,17 @@ export default function TextFormatterFramerResponsive(props: Props) {
                 height,
                 boxSizing: "border-box",
                 overflow: "auto",
-                background: background || "#F6F6F7",
+                background: "transparent",
                 color: textColor,
-                borderRadius: Math.max(12, radius),
-                border: "1px solid #E5E8EF",
-                padding: 16,
+                borderRadius: 0,
+                border: "none",
+                padding: 0,
                 fontFamily:
                     '"Inter", "SF Pro Text", "SF Pro Display", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 position: "relative",
             }}
         >
             <style>{`
-                .tf-action-button {
-                    background: var(--btn-bg);
-                    border: 1px solid var(--btn-border);
-                    box-shadow: var(--btn-shadow);
-                }
-                .tf-action-button:hover {
-                    background: var(--btn-bg-hover);
-                    border-color: var(--btn-border-hover);
-                    box-shadow: var(--btn-shadow-hover);
-                    filter: brightness(0.98);
-                }
-                .tf-action-button[data-selected="true"] {
-                    background: var(--btn-bg-selected);
-                    border-color: var(--btn-border-selected);
-                }
-                .tf-action-button:active {
-                    transform: translateY(1px);
-                }
                 .tf-toolbar-button {
                     background: var(--btn-bg);
                     border: 1px solid var(--btn-border);
@@ -801,29 +1088,155 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     background: #E9EEF6;
                     border-color: #D6DDE8;
                 }
-                .tf-input {
-                    background: rgba(27, 36, 55, 0.03);
+                .tf-input-row {
+                    background: rgba(0, 0, 0, 0.03);
+                    border-radius: 12px;
+                    padding: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
                     border: 1px solid transparent;
                     transition: border-color 140ms ease, background 140ms ease;
                 }
-                .tf-input:focus {
+                .tf-input-row:focus-within {
                     border-color: #D6DDE8;
-                    background: rgba(27, 36, 55, 0.04);
+                    background: rgba(0, 0, 0, 0.04);
                 }
-                .tf-input::placeholder {
+                .tf-input-field {
+                    border: none;
+                    outline: none;
+                    background: transparent;
+                    font-size: 14px;
+                    color: #1B2437;
+                    width: 100%;
+                }
+                .tf-input-field::placeholder {
                     color: rgba(27, 36, 55, 0.6);
                 }
+                .tf-cta-secondary {
+                    background: #FFFFFF;
+                    border: 1px solid #E5E8EF;
+                    border-radius: 6px;
+                    padding: 4px 6px;
+                    font-size: 14px;
+                    color: #1B2437;
+                    cursor: pointer;
+                    transition: background 140ms ease, border-color 140ms ease;
+                    white-space: nowrap;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: auto;
+                }
+                .tf-cta-secondary:hover {
+                    background: #F4F6FA;
+                    border-color: #DDE2EA;
+                }
+                .tf-panel-icon-button {
+                    background: #FFFFFF;
+                    border: 1px solid #E5E8EF;
+                    border-radius: 6px;
+                    padding: 4px;
+                    display: grid;
+                    place-items: center;
+                    cursor: pointer;
+                    transition: background 140ms ease, border-color 140ms ease;
+                }
+                .tf-panel-icon-button:hover {
+                    background: #F4F6FA;
+                    border-color: #DDE2EA;
+                }
+                .tf-stats {
+                    display: grid;
+                    grid-template-columns: repeat(
+                        auto-fit,
+                        minmax(160px, 1fr)
+                    );
+                    border-top: 1px solid rgba(0, 0, 0, 0.03);
+                }
+                .tf-stat {
+                    display: flex;
+                    align-items: center;
+                    padding: 8px;
+                    gap: 8px;
+                    border-left: 1px solid rgba(0, 0, 0, 0.03);
+                    border-top: 1px solid rgba(0, 0, 0, 0.03);
+                }
+                .tf-stat:first-child {
+                    border-top: none;
+                    border-left: none;
+                }
+                @media (max-width: 519px) {
+                    .tf-stat {
+                        border-left: none;
+                    }
+                }
+                @media (min-width: 520px) {
+                    .tf-stat:nth-child(-n + 2) {
+                        border-top: none;
+                    }
+                }
+                @media (min-width: 700px) {
+                    .tf-stat:nth-child(-n + 3) {
+                        border-top: none;
+                    }
+                }
+                @media (min-width: 900px) {
+                    .tf-stat:nth-child(-n + 4) {
+                        border-top: none;
+                    }
+                }
+                .tf-menu-popover {
+                    animation: tfFadeIn 180ms ease;
+                }
+                .tf-panel-content {
+                    animation: tfFadeIn 200ms ease;
+                }
+                .tf-tools-menu {
+                    display: flex;
+                    gap: 8px;
+                    align-items: flex-start;
+                }
+                .tf-main-row {
+                    display: grid;
+                    gap: 8px;
+                    align-items: stretch;
+                    transition: grid-template-columns 520ms cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                @media (max-width: 900px) {
+                    .tf-main-row {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+                @media (max-width: 820px) {
+                    .tf-tools-menu {
+                        flex-direction: column;
+                        width: min(92vw, 360px);
+                        align-items: flex-end;
+                    }
+                    .tf-tools-panel {
+                        width: 100% !important;
+                    }
+                    .tf-side-panel {
+                        width: 100% !important;
+                        flex: 1 1 100% !important;
+                    }
+                    .tf-menu-popover {
+                        right: 0 !important;
+                        left: auto !important;
+                    }
+                }
+                @keyframes tfFadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-6px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
             `}</style>
-            <div
-                style={{
-                    background: panelColor,
-                    borderRadius: 14,
-                    padding: 8,
-                    minHeight: "100%",
-                    boxSizing: "border-box",
-                    border: `1px solid ${borderColor}`,
-                }}
-            >
                 <div
                     style={{
                         position: "sticky",
@@ -862,1026 +1275,477 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                 {title}
                             </div>
 
-                            <div
-                                style={{
-                                    fontSize: 11,
-                                    color: mutedTextColor,
-                                    marginTop: 4,
-                                    lineHeight: 1.35,
-                                }}
-                            >
-                                Workspace in stile editor Figma
-                            </div>
+                            
                         </div>
 
-                        <div
-                            style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 6,
-                                justifyContent: "flex-end",
-                                flex: "0 1 auto",
-                                minWidth: 0,
-                                maxWidth: "100%",
-                            }}
-                        >
-                            <ActionButton
-                                label="Undo"
-                                icon={<Undo2 size={16} />}
-                                iconOnly
-                                onClick={undo}
-                                accent={accent}
-                                secondary
-                            />
-                            <ActionButton
-                                label="Redo"
-                                icon={<Redo2 size={16} />}
-                                iconOnly
-                                onClick={redo}
-                                accent={accent}
-                                secondary
-                            />
-                            <ActionButton
-                                label="Seleziona testo"
-                                icon={<MousePointerClick size={16} />}
-                                iconOnly
-                                onClick={selectAll}
-                                accent={accent}
-                                secondary
-                            />
-                            <ActionButton
-                                label="Azzera parametri"
-                                icon={<Eraser size={16} />}
-                                iconOnly
-                                onClick={resetFields}
-                                accent={accent}
-                                secondary
-                            />
-                            <ActionButton
-                                label="Copia"
-                                icon={<Copy size={16} />}
-                                iconOnly
-                                onClick={copyText}
-                                accent={accent}
-                            />
-                            <ActionButton
-                                label="Cancella testo"
-                                icon={<Trash2 size={16} />}
-                                iconOnly
-                                onClick={clearAll}
-                                accent={accent2}
-                            />
-                        </div>
                     </div>
 
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                                "repeat(auto-fit, minmax(130px, 1fr))",
-                            gap: 8,
-                            marginBottom: 10,
-                        }}
-                    >
-                        {[
-                            { label: "Linee effettive", value: effectiveLines },
-                            { label: "Linee a schermo", value: visibleLines },
-                            { label: "Parole", value: words },
-                            { label: "Caratteri", value: chars },
-                        ].map((item) => (
-                            <div
-                                key={item.label}
-                                style={{
-                                    background: "#FFFFFF",
-                                    border: "1px solid #E5E8EF",
-                                    borderRadius: 8,
-                                    padding: 10,
-                                    minWidth: 0,
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        fontSize: 11,
-                                        color: "#73809A",
-                                        marginBottom: 4,
-                                        fontWeight: 600,
-                                        lineHeight: 1.3,
-                                    }}
-                                >
-                                    {item.label}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: 18,
-                                        fontWeight: 700,
-                                        wordBreak: "break-word",
-                                    }}
-                                >
-                                    {item.value}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div
-                        style={{
-                            fontSize: 12,
-                            fontWeight: 700,
-                            letterSpacing: 0.2,
-                            color: "#52607A",
-                        }}
-                    >
-                        Trasforma — workspace unificato
-                    </div>
                 </div>
 
-                <Card background={panelColor}>
-                    <div style={{ position: "relative" }}>
                     <div
+                        className="tf-main-row"
                         style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            flexWrap: "wrap",
-                            padding: "6px 8px",
-                            marginBottom: 8,
-                            borderRadius: 12,
-                            background: "rgba(27, 36, 55, 0.03)",
+                            gridTemplateColumns: showSidePanel
+                                ? "minmax(0, 1fr) 303px"
+                                : "minmax(0, 1fr) 0px",
                         }}
                     >
                         <div
+                            className="tf-side-panel"
                             style={{
+                                background: "#FFFFFF",
+                                border: "1px solid #E5E8EF",
+                                borderRadius: 14,
+                                padding: 8,
+                                width: "100%",
+                                minWidth: 260,
                                 display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                flexWrap: "wrap",
-                                minWidth: 0,
-                                flex: "1 1 320px",
+                                flexDirection: "column",
+                                gap: 12,
+                                willChange: "width",
                             }}
                         >
-                            <ToolbarButton
-                                label="Maiuscolo dopo punto"
-                                icon={<span>.Aa</span>}
-                                onClick={() =>
-                                    applyText(
-                                        capitalizeAfterPunctuation(text),
-                                        "Frasi aggiornate"
-                                    )
-                                }
-                                accent={accent}
-                            />
-                            <ToolbarButton
-                                label="Tutto minuscolo"
-                                icon={<span>aa</span>}
-                                onClick={() =>
-                                    applyText(
-                                        text.toLowerCase(),
-                                        "Convertito in minuscolo"
-                                    )
-                                }
-                                accent={accent}
-                            />
-                            <ToolbarButton
-                                label="Iniziali maiuscole"
-                                icon={<span>Ab</span>}
-                                onClick={() =>
-                                    applyText(
-                                        toTitleCase(text),
-                                        "Iniziali aggiornate"
-                                    )
-                                }
-                                accent={accent}
-                            />
-                            <ToolbarButton
-                                label="Tutto maiuscolo"
-                                icon={<span>AB</span>}
-                                onClick={() =>
-                                    applyText(
-                                        text.toUpperCase(),
-                                        "Convertito in maiuscolo"
-                                    )
-                                }
-                                accent={accent}
-                            />
-                            <ToolbarButton
-                                label="Maiuscole casuali"
-                                icon={<span>aA</span>}
-                                onClick={() =>
-                                    applyText(
-                                        randomCase(text),
-                                        "Case casuale applicato"
-                                    )
-                                }
-                                accent={accent}
-                            />
+                            <div style={{ position: "relative" }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 8,
+                                        flexWrap: "wrap",
+                                        padding: "6px 8px",
+                                        borderRadius: 12,
+                                        background: "rgba(27, 36, 55, 0.03)",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 6,
+                                            flexWrap: "wrap",
+                                            minWidth: 0,
+                                            flex: "1 1 320px",
+                                        }}
+                                    >
+                                        <ToolbarButton
+                                            label="Capitalize after punctuation"
+                                            icon={<span>.Aa</span>}
+                                            onClick={() =>
+                                                applyText(
+                                                    capitalizeAfterPunctuation(
+                                                        text
+                                                    ),
+                                                    "Sentences updated"
+                                                )
+                                            }
+                                            accent={accent}
+                                        />
+                                        <ToolbarButton
+                                            label="All lowercase"
+                                            icon={<span>aa</span>}
+                                            onClick={() =>
+                                                applyText(
+                                                    text.toLowerCase(),
+                                                    "Converted to lowercase"
+                                                )
+                                            }
+                                            accent={accent}
+                                        />
+                                        <ToolbarButton
+                                            label="Title case"
+                                            icon={<span>Ab</span>}
+                                            onClick={() =>
+                                                applyText(
+                                                    toTitleCase(text),
+                                                    "Title case applied"
+                                                )
+                                            }
+                                            accent={accent}
+                                        />
+                                        <ToolbarButton
+                                            label="All uppercase"
+                                            icon={<span>AB</span>}
+                                            onClick={() =>
+                                                applyText(
+                                                    text.toUpperCase(),
+                                                    "Converted to uppercase"
+                                                )
+                                            }
+                                            accent={accent}
+                                        />
+                                        <ToolbarButton
+                                            label="Random case"
+                                            icon={<span>aA</span>}
+                                            onClick={() =>
+                                                applyText(
+                                                    randomCase(text),
+                                                    "Random case applied"
+                                                )
+                                            }
+                                            accent={accent}
+                                        />
 
                             <div
                                 style={{
                                     position: "relative",
                                     display: "inline-flex",
                                 }}
+                                ref={toolsMenuRef}
                             >
-                                <ToolbarButton
-                                    label="Altri strumenti"
-                                    icon={<span>•••</span>}
-                                    onClick={() =>
-                                        setToolsOpen((prev) => !prev)
-                                    }
-                                    accent={accent}
-                                    selected={toolsOpen}
-                                />
+                                            <ToolbarButton
+                                                label="More tools"
+                                                icon={<span>•••</span>}
+                                                onClick={() =>
+                                                    setToolsOpen((prev) => !prev)
+                                                }
+                                                accent={accent}
+                                                selected={toolsOpen}
+                                            />
 
-                                {toolsOpen && (
+                                            {toolsOpen && (
+                                            <div
+                                                className="tf-menu-popover tf-tools-menu"
+                                                style={{
+                                                    position: "absolute",
+                                                    top: "calc(100% + 8px)",
+                                                    left: 0,
+                                                    zIndex: 40,
+                                                    alignItems: "flex-start",
+                                                    maxWidth: "92vw",
+                                                    width: "max-content",
+                                                }}
+                                            >
+                                                <div
+                                                    className="tf-tools-panel"
+                                                    style={{
+                                                        width: "min(320px, 90vw)",
+                                                        background:
+                                                            "#FFFFFF",
+                                                        border: "1px solid #E5E8EF",
+                                                        borderRadius: 12,
+                                                        boxShadow:
+                                                            "0 12px 30px rgba(0,0,0,0.14)",
+                                                        padding: 8,
+                                                    }}
+                                                >
+                                                        {[
+                                                            "transform",
+                                                            "lines",
+                                                            "cleanup",
+                                                            "replace",
+                                                        ].map((sectionKey) => (
+                                                            <button
+                                                                key={sectionKey}
+                                                                onClick={() =>
+                                                                    setActiveSection(
+                                                                        sectionKey as any
+                                                                    )
+                                                                }
+                                                                onMouseEnter={() =>
+                                                                    setActiveSection(
+                                                                        sectionKey as any
+                                                                    )
+                                                                }
+                                                                className="tf-menu-button"
+                                                                data-selected={
+                                                                    activeSection ===
+                                                                    sectionKey
+                                                                        ? "true"
+                                                                        : "false"
+                                                                }
+                                                                style={{
+                                                                    width: "100%",
+                                                                    background:
+                                                                        "transparent",
+                                                                    borderRadius: 6,
+                                                                    padding:
+                                                                        "8px 8px",
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    justifyContent:
+                                                                        "space-between",
+                                                                    fontSize: 14,
+                                                                    color: "#1B2437",
+                                                                    cursor: "pointer",
+                                                                    whiteSpace:
+                                                                        "normal",
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    style={{
+                                                                        display:
+                                                                            "flex",
+                                                                        alignItems:
+                                                                            "center",
+                                                                        gap: 6,
+                                                                        flex: 1,
+                                                                        minWidth: 0,
+                                                                    }}
+                                                                >
+                                                                    {sectionMeta[sectionKey]?.icon}
+                                                                    {sectionMeta[sectionKey]?.label}
+                                                                </span>
+                                                                <ChevronRight size={14} />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                <div
+                                                    className="tf-tools-panel"
+                                                    style={{
+                                                        width: "min(300px, 90vw)",
+                                                        background:
+                                                            "#FFFFFF",
+                                                        border: "1px solid #E5E8EF",
+                                                        borderRadius: 12,
+                                                        boxShadow:
+                                                            "0 12px 30px rgba(0,0,0,0.14)",
+                                                        padding: 8,
+                                                    }}
+                                                >
+                                                        {(activeSection ===
+                                                        "transform"
+                                                            ? ["reversals", "sortings"]
+                                                            : activeSection ===
+                                                                "lines"
+                                                              ? [
+                                                                    "duplicates",
+                                                                    "linebreaks",
+                                                                    "prefix",
+                                                                    "create_breaks",
+                                                                ]
+                                                              : activeSection ===
+                                                                  "cleanup"
+                                                                ? [
+                                                                      "spaces",
+                                                                      "accents",
+                                                                      "numbers",
+                                                                  ]
+                                                                : ["replace", "filter"]
+                                                        ).map((groupKey) => (
+                                                            <button
+                                                                key={groupKey}
+                                                                onClick={() => {
+                                                                    setActiveGroup(
+                                                                        groupKey
+                                                                    )
+                                                                    setToolsOpen(
+                                                                        false
+                                                                    )
+                                                                }}
+                                                                className="tf-menu-button"
+                                                                data-selected={
+                                                                    activeGroup ===
+                                                                    groupKey
+                                                                        ? "true"
+                                                                        : "false"
+                                                                }
+                                                                style={{
+                                                                    width: "100%",
+                                                                    background:
+                                                                        "transparent",
+                                                                    borderRadius: 6,
+                                                                    padding:
+                                                                        "8px 8px",
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    gap: 6,
+                                                                    fontSize: 14,
+                                                                    color: "#1B2437",
+                                                                    cursor: "pointer",
+                                                                    textAlign:
+                                                                        "left",
+                                                                whiteSpace:
+                                                                    "normal",
+                                                            }}
+                                                        >
+                                                                {groupMeta[groupKey]?.icon}
+                                                                {groupMeta[groupKey]?.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div
                                         style={{
-                                            position: "absolute",
-                                            top: "calc(100% + 8px)",
-                                            left: 0,
-                                            zIndex: 40,
                                             display: "flex",
-                                            gap: 8,
-                                            alignItems: "flex-start",
+                                            gap: 6,
+                                            flexWrap: "wrap",
+                                            justifyContent: "flex-end",
+                                            flex: "0 1 auto",
                                         }}
+                                    >
+                                        <ToolbarButton
+                                            label="Undo"
+                                            icon={<Undo2 size={16} />}
+                                            onClick={undo}
+                                            accent={accent}
+                                            variant="icon"
+                                        />
+                                        <ToolbarButton
+                                            label="Redo"
+                                            icon={<Redo2 size={16} />}
+                                            onClick={redo}
+                                            accent={accent}
+                                            variant="icon"
+                                        />
+                                        <ToolbarButton
+                                            label="Copy"
+                                            icon={<Copy size={16} />}
+                                            onClick={copyText}
+                                            accent={accent}
+                                            variant="icon"
+                                        />
+                                        <ToolbarButton
+                                            label="Clear"
+                                            icon={<Trash2 size={16} />}
+                                            onClick={clearAll}
+                                            accent={accent}
+                                            variant="icon"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea
+                                value={text}
+                                ref={textareaRef}
+                                placeholder={placeholder}
+                                onChange={(e) => onTextChange(e.target.value)}
+                                onBlur={commitTextSnapshot}
+                                style={{
+                                    width: "100%",
+                                    minHeight: 260,
+                                    resize: "vertical",
+                                    border: "none",
+                                    outline: "none",
+                                    background: "transparent",
+                                    color: textColor,
+                                    fontSize,
+                                    lineHeight: 1.5,
+                                    fontFamily: "inherit",
+                                    boxSizing: "border-box",
+                                }}
+                            />
+
+                            <div
+                                className="tf-stats"
+                                style={{ margin: "8px -8px -8px" }}
+                            >
+                                {[
+                                    {
+                                        label: "Effective lines",
+                                        value: effectiveLines,
+                                    },
+                                    {
+                                        label: "Visible lines",
+                                        value: visibleLines,
+                                    },
+                                    { label: "Words", value: words },
+                                    { label: "Characters", value: chars },
+                                ].map((item, index) => (
+                                    <div
+                                        key={item.label}
+                                        className="tf-stat"
                                     >
                                         <div
                                             style={{
-                                                width: 300,
-                                                background: "#FFFFFF",
-                                                border: "1px solid #E5E8EF",
-                                                borderRadius: 12,
-                                                boxShadow:
-                                                    "0 12px 30px rgba(0,0,0,0.14)",
-                                                padding: 8,
+                                                fontSize: 14,
+                                                color: "#1B2437",
+                                                flex: "1 1 auto",
+                                                minWidth: 0,
                                             }}
                                         >
-                                            {[
-                                                {
-                                                    key: "trasforma",
-                                                    label: "Trasforma testo",
-                                                },
-                                                {
-                                                    key: "righe",
-                                                    label: "Righe e struttura",
-                                                },
-                                                {
-                                                    key: "pulisci",
-                                                    label: "Pulizia contenuto",
-                                                },
-                                                {
-                                                    key: "sostituisci",
-                                                    label: "Cerca, sostituisci e filtra",
-                                                },
-                                            ].map((section) => (
-                                                <button
-                                                    key={section.key}
-                                                    onClick={() =>
-                                                        setActiveSection(
-                                                            section.key as any
-                                                        )
-                                                    }
-                                                    className="tf-menu-button"
-                                                    data-selected={
-                                                        activeSection ===
-                                                        section.key
-                                                            ? "true"
-                                                            : "false"
-                                                    }
-                                                    style={{
-                                                        width: "100%",
-                                                        background: "transparent",
-                                                        borderRadius: 6,
-                                                        padding: "8px 8px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        fontSize: 14,
-                                                        color: "#1B2437",
-                                                        cursor: "pointer",
-                                                    }}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            display: "flex",
-                                                            alignItems:
-                                                                "center",
-                                                            gap: 6,
-                                                        }}
-                                                    >
-                                                        <span>◬</span>
-                                                        {section.label}
-                                                    </span>
-                                                    <ChevronRight size={14} />
-                                                </button>
-                                            ))}
+                                            {item.label}:{" "}
+                                            <strong>{item.value}</strong>
                                         </div>
-
-                                        <div
-                                            style={{
-                                                width: 280,
-                                                background: "#FFFFFF",
-                                                border: "1px solid #E5E8EF",
-                                                borderRadius: 12,
-                                                boxShadow:
-                                                    "0 12px 30px rgba(0,0,0,0.14)",
-                                                padding: 8,
-                                            }}
+                                        <button
+                                            className="tf-panel-icon-button"
+                                            onClick={() =>
+                                                copyStat(
+                                                    item.label,
+                                                    item.value
+                                                )
+                                            }
+                                            aria-label={`Copy ${item.label}`}
                                         >
-                                            {(activeSection === "trasforma"
-                                                ? [
-                                                      {
-                                                          key: "inversioni",
-                                                          label: "Inversioni",
-                                                      },
-                                                      {
-                                                          key: "ordinamenti",
-                                                          label: "Ordinamenti",
-                                                      },
-                                                  ]
-                                                : activeSection === "righe"
-                                                  ? [
-                                                        {
-                                                            key: "duplicati",
-                                                            label: "Duplicati",
-                                                        },
-                                                        {
-                                                            key: "capoversi",
-                                                            label: "Capoversi",
-                                                        },
-                                                        {
-                                                            key: "prefisso",
-                                                            label: "Prefisso e suffisso",
-                                                        },
-                                                        {
-                                                            key: "crea",
-                                                            label: "Crea capoversi",
-                                                        },
-                                                    ]
-                                                  : activeSection === "pulisci"
-                                                    ? [
-                                                          {
-                                                              key: "spazi",
-                                                              label: "Righe vuote e spazi",
-                                                          },
-                                                          {
-                                                              key: "accenti",
-                                                              label: "Accenti",
-                                                          },
-                                                          {
-                                                              key: "numeri",
-                                                              label: "Ordinamento numeri",
-                                                          },
-                                                      ]
-                                                    : [
-                                                          {
-                                                              key: "sostituisci",
-                                                              label: "Sostituisci testo",
-                                                          },
-                                                          {
-                                                              key: "filtra",
-                                                              label: "Filtra righe",
-                                                          },
-                                                      ]
-                                            ).map((group) => (
-                                                <button
-                                                    key={group.key}
-                                                    onClick={() => {
-                                                        setActiveGroup(
-                                                            group.key
-                                                        )
-                                                        setToolsOpen(false)
-                                                    }}
-                                                    className="tf-menu-button"
-                                                    data-selected={
-                                                        activeGroup ===
-                                                        group.key
-                                                            ? "true"
-                                                            : "false"
-                                                    }
-                                                    style={{
-                                                        width: "100%",
-                                                        background: "transparent",
-                                                        borderRadius: 6,
-                                                        padding: "8px 8px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: 6,
-                                                        fontSize: 14,
-                                                        color: "#1B2437",
-                                                        cursor: "pointer",
-                                                        textAlign: "left",
-                                                    }}
-                                                >
-                                                    <span>◬</span>
-                                                    {group.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                            <Copy size={16} />
+                                        </button>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </div>
 
                         <div
                             style={{
+                                background: "#FFFFFF",
+                                border: "1px solid #E5E8EF",
+                                borderRadius: 14,
+                                padding: 8,
+                                width: "100%",
+                                minWidth: 0,
                                 display: "flex",
-                                gap: 6,
-                                flexWrap: "wrap",
-                                justifyContent: "flex-end",
-                                flex: "0 1 auto",
+                                flexDirection: "column",
+                                gap: 24,
+                                overflow: "hidden",
+                                opacity: showSidePanel ? 1 : 0,
+                                transform: showSidePanel
+                                    ? "translateX(0)"
+                                    : "translateX(8px)",
+                                pointerEvents: showSidePanel ? "auto" : "none",
+                                transition:
+                                    "opacity 220ms ease, transform 220ms ease",
                             }}
                         >
-                            <ToolbarButton
-                                label="Undo"
-                                icon={<Undo2 size={16} />}
-                                onClick={undo}
-                                accent={accent}
-                                variant="icon"
-                            />
-                            <ToolbarButton
-                                label="Redo"
-                                icon={<Redo2 size={16} />}
-                                onClick={redo}
-                                accent={accent}
-                                variant="icon"
-                            />
-                            <ToolbarButton
-                                label="Copia"
-                                icon={<Copy size={16} />}
-                                onClick={copyText}
-                                accent={accent}
-                                variant="icon"
-                            />
-                            <ToolbarButton
-                                label="Cancella"
-                                icon={<Trash2 size={16} />}
-                                onClick={clearAll}
-                                accent={accent}
-                                variant="icon"
-                            />
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        flex: "1 1 auto",
+                                        minWidth: 0,
+                                    }}
+                                >
+                                    {panelHeader.icon}
+                                    <div
+                                        style={{
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: "#1B2437",
+                                        }}
+                                    >
+                                        {panelHeader.title}
+                                    </div>
+                                </div>
+                                <button
+                                    className="tf-panel-icon-button"
+                                    onClick={() => setActiveGroup("none")}
+                                    aria-label="Close panel"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+
+                            <div className="tf-panel-content">
+                                {panelContent}
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <textarea
-                    value={text}
-                    ref={textareaRef}
-                    placeholder={placeholder}
-                    onChange={(e) => onTextChange(e.target.value)}
-                    onBlur={commitTextSnapshot}
-                    style={{
-                        width: "100%",
-                        minHeight: 260,
-                        resize: "vertical",
-                        border: "none",
-                        outline: "none",
-                        background: "transparent",
-                        color: textColor,
-                        fontSize,
-                        lineHeight: 1.5,
-                        fontFamily: "inherit",
-                        boxSizing: "border-box",
-                    }}
-                />
-
-                <div style={{ marginTop: 10 }}>
-                    {activeGroup === "inversioni" && (
-                        <Accordion
-                            title="Inversioni"
-                            icon={<RefreshCw size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Inverti testo"
-                                    onClick={() =>
-                                        applyText(
-                                            reverseText(text),
-                                            "Testo invertito"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Inverti parole"
-                                    onClick={() =>
-                                        applyText(
-                                            reverseWords(text),
-                                            "Parole invertite"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Inverti lettere di ogni parola"
-                                    onClick={() =>
-                                        applyText(
-                                            reverseLettersEachWord(text),
-                                            "Lettere invertite"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Capovolgi ordine righe"
-                                    onClick={() =>
-                                        applyText(
-                                            reverseLinesOrder(text),
-                                            "Ordine righe invertito"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "ordinamenti" && (
-                        <Accordion
-                            title="Ordinamenti"
-                            icon={<ArrowUpDown size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Ordina righe A-Z"
-                                    onClick={() =>
-                                        applyText(
-                                            sortLinesAZ(text),
-                                            "Righe ordinate A-Z"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Ordina righe Z-A"
-                                    onClick={() =>
-                                        applyText(
-                                            sortLinesZA(text),
-                                            "Righe ordinate Z-A"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Ordina per lunghezza"
-                                    onClick={() =>
-                                        applyText(
-                                            sortLinesByLength(text),
-                                            "Righe ordinate per lunghezza"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Aggiungi numerazione righe"
-                                    onClick={() =>
-                                        applyText(
-                                            addLineNumbers(text),
-                                            "Numerazione aggiunta"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "duplicati" && (
-                        <Accordion
-                            title="Duplicati"
-                            icon={<CopyMinus size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Parole uniche A-Z"
-                                    onClick={() =>
-                                        applyText(
-                                            uniqueWordsAZ(text),
-                                            "Duplicati rimossi"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Parole uniche Z-A"
-                                    onClick={() =>
-                                        applyText(
-                                            uniqueWordsZA(text),
-                                            "Duplicati rimossi"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Rimuovi righe duplicate (insensibile)"
-                                    onClick={() =>
-                                        applyText(
-                                            removeDuplicateLines(text, false),
-                                            "Righe duplicate rimosse"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Rimuovi righe duplicate (sensibile)"
-                                    onClick={() =>
-                                        applyText(
-                                            removeDuplicateLines(text, true),
-                                            "Righe duplicate rimosse"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "capoversi" && (
-                        <Accordion
-                            title="Capoversi"
-                            icon={<Pilcrow size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <InputField
-                                    label="Sostituisci tutti i capoversi con"
-                                    value={replaceBreaksWith}
-                                    onChange={(e) =>
-                                        setReplaceBreaksWith(e.target.value)
-                                    }
-                                />
-                                <ActionButton
-                                    label="Applica"
-                                    onClick={() =>
-                                        applyText(
-                                            replaceLineBreaks(
-                                                text,
-                                                replaceBreaksWith
-                                            ),
-                                            "Capoversi sostituiti"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Rimuovi tutti i capoversi"
-                                    onClick={() =>
-                                        applyText(
-                                            removeAllLineBreaks(text),
-                                            "Capoversi rimossi"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "prefisso" && (
-                        <Accordion
-                            title="Prefisso e suffisso"
-                            icon={<Tag size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <InputField
-                                    label="Prefisso"
-                                    value={prefix}
-                                    onChange={(e) => setPrefix(e.target.value)}
-                                />
-                                <InputField
-                                    label="Suffisso"
-                                    value={suffix}
-                                    onChange={(e) => setSuffix(e.target.value)}
-                                />
-                                <ActionButton
-                                    label="Applica a tutte le righe"
-                                    onClick={() =>
-                                        applyText(
-                                            addPrefixSuffixToLines(
-                                                text,
-                                                prefix,
-                                                suffix
-                                            ),
-                                            "Prefisso e suffisso applicati"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "crea" && (
-                        <Accordion
-                            title="Crea capoversi"
-                            icon={<Scissors size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <InputField
-                                    label="Dopo parola o carattere"
-                                    value={breakAfter}
-                                    onChange={(e) =>
-                                        setBreakAfter(e.target.value)
-                                    }
-                                />
-                                <ActionButton
-                                    label="Inserisci capoverso"
-                                    onClick={() =>
-                                        applyText(
-                                            createBreakAfterToken(
-                                                text,
-                                                breakAfter
-                                            ),
-                                            "Capoversi inseriti"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <InputField
-                                    label="Ogni X caratteri"
-                                    value={everyChars}
-                                    onChange={(e) =>
-                                        setEveryChars(e.target.value)
-                                    }
-                                    inputMode="numeric"
-                                />
-                                <ActionButton
-                                    label="Applica ogni X caratteri"
-                                    onClick={() =>
-                                        applyText(
-                                            createBreakEveryNChars(
-                                                text,
-                                                Number(everyChars)
-                                            ),
-                                            "Capoversi creati"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "spazi" && (
-                        <Accordion
-                            title="Righe vuote e spazi"
-                            icon={<Sparkles size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Rimuovi righe vuote"
-                                    onClick={() =>
-                                        applyText(
-                                            removeEmptyLines(text),
-                                            "Righe vuote rimosse"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Riduci righe vuote multiple"
-                                    onClick={() =>
-                                        applyText(
-                                            reduceMultipleEmptyLines(text),
-                                            "Righe vuote ridotte"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Elimina spazi doppi (1 passata)"
-                                    onClick={() =>
-                                        applyText(
-                                            removeDoubleSpacesOnce(text),
-                                            "Spazi doppi ridotti"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Elimina spazi doppi (tutti)"
-                                    onClick={() =>
-                                        applyText(
-                                            removeDoubleSpacesAll(text),
-                                            "Spazi doppi rimossi"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "accenti" && (
-                        <Accordion
-                            title="Accenti"
-                            icon={<Languages size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Rimuovi accenti"
-                                    onClick={() =>
-                                        applyText(
-                                            removeAccents(text),
-                                            "Accenti rimossi"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Accenti → apostrofo"
-                                    onClick={() =>
-                                        applyText(
-                                            accentToApostrophe(text),
-                                            "Accenti convertiti"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "numeri" && (
-                        <Accordion
-                            title="Ordinamento numeri"
-                            icon={<Hash size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <ActionButton
-                                    label="Ordina numeri separati da spazio"
-                                    onClick={() =>
-                                        applyText(
-                                            sortNumbersInLine(text, "space"),
-                                            "Numeri ordinati"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Ordina numeri separati da virgola"
-                                    onClick={() =>
-                                        applyText(
-                                            sortNumbersInLine(text, "comma"),
-                                            "Numeri ordinati"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Ordina righe numeriche"
-                                    onClick={() =>
-                                        applyText(
-                                            sortNumericLines(text),
-                                            "Righe numeriche ordinate"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "sostituisci" && (
-                        <Accordion
-                            title="Sostituisci testo"
-                            icon={<Search size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <InputField
-                                    label="Cerca"
-                                    value={searchValue}
-                                    onChange={(e) =>
-                                        setSearchValue(e.target.value)
-                                    }
-                                />
-                                <InputField
-                                    label="Sostituisci con"
-                                    value={replaceValue}
-                                    onChange={(e) =>
-                                        setReplaceValue(e.target.value)
-                                    }
-                                />
-                                <ActionButton
-                                    label="Sostituisci tutto"
-                                    onClick={() =>
-                                        applyText(
-                                            replaceTextAll(
-                                                text,
-                                                searchValue,
-                                                replaceValue
-                                            ),
-                                            "Sostituzione completata"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Sostituisci dentro ogni riga"
-                                    onClick={() =>
-                                        applyText(
-                                            replaceWordInsideLines(
-                                                text,
-                                                searchValue,
-                                                replaceValue
-                                            ),
-                                            "Sostituzione per riga completata"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-
-                    {activeGroup === "filtra" && (
-                        <Accordion
-                            title="Filtra righe"
-                            icon={<Filter size={16} />}
-                            defaultOpen
-                        >
-                            <div style={{ display: "grid", gap: 8 }}>
-                                <InputField
-                                    label="Parola filtro"
-                                    value={filterWord}
-                                    onChange={(e) =>
-                                        setFilterWord(e.target.value)
-                                    }
-                                />
-                                <ActionButton
-                                    label="Estrai righe con la parola"
-                                    onClick={() =>
-                                        applyText(
-                                            extractLinesWithWord(
-                                                text,
-                                                filterWord
-                                            ),
-                                            "Righe estratte"
-                                        )
-                                    }
-                                    accent={accent}
-                                />
-                                <ActionButton
-                                    label="Rimuovi righe con la parola"
-                                    onClick={() =>
-                                        applyText(
-                                            removeLinesWithWord(
-                                                text,
-                                                filterWord
-                                            ),
-                                            "Righe rimosse"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                                <ActionButton
-                                    label="Mantieni solo righe con la parola"
-                                    onClick={() =>
-                                        applyText(
-                                            keepOnlyLinesWithWord(
-                                                text,
-                                                filterWord
-                                            ),
-                                            "Filtro applicato"
-                                        )
-                                    }
-                                    accent={accent}
-                                    secondary
-                                />
-                            </div>
-                        </Accordion>
-                    )}
-                </div>
-            </Card>
-            </div>
 
             {toast && (
                 <div
@@ -1909,15 +1773,12 @@ export default function TextFormatterFramerResponsive(props: Props) {
 
 TextFormatterFramerResponsive.defaultProps = {
     title: "Text Formatter",
-    placeholder: "Incolla o scrivi qui il tuo testo…",
+    placeholder: "Paste or type your text here…",
     height: 1100,
     accent: "#1B2437",
     accent2: "#C63D2F",
     background: "#F6F6F7",
-    panelColor: "#FFFFFF",
     textColor: "#1B2437",
-    mutedTextColor: "rgba(27,36,55,0.6)",
-    borderColor: "#E5E8EF",
     radius: 24,
     fontSize: 15,
 }
@@ -1951,21 +1812,9 @@ addPropertyControls(TextFormatterFramerResponsive, {
         type: ControlType.Color,
         title: "Background",
     },
-    panelColor: {
-        type: ControlType.Color,
-        title: "Panels",
-    },
     textColor: {
         type: ControlType.Color,
         title: "Text",
-    },
-    mutedTextColor: {
-        type: ControlType.Color,
-        title: "Muted",
-    },
-    borderColor: {
-        type: ControlType.Color,
-        title: "Border",
     },
     radius: {
         type: ControlType.Number,
