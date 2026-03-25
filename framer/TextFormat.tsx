@@ -610,6 +610,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
         panelColor,
         textColor,
         mutedTextColor,
+        borderColor,
         radius,
         fontSize,
     } = props
