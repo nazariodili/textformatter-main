@@ -1,5 +1,5 @@
 import * as React from "react"
-import { addPropertyControls, ControlType } from "framer"
+import { createRoot } from "react-dom/client"
 import {
     ChevronRight,
     Undo2,
@@ -305,6 +305,7 @@ function ToolbarButton({
     accent,
     variant = "ghost",
     selected = false,
+    disabled = false,
 }: {
     label: string
     icon: React.ReactNode
@@ -312,6 +313,7 @@ function ToolbarButton({
     accent: string
     variant?: "ghost" | "icon"
     selected?: boolean
+    disabled?: boolean
 }) {
     const isIcon = variant === "icon"
     const buttonRef = React.useRef<HTMLButtonElement | null>(null)
@@ -394,6 +396,7 @@ function ToolbarButton({
             data-selected={selected ? "true" : "false"}
             data-tooltip={label}
             ref={buttonRef}
+            disabled={disabled}
             style={{
                 width: "auto",
                 minWidth: 24,
@@ -404,10 +407,11 @@ function ToolbarButton({
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                cursor: "pointer",
+                cursor: disabled ? "not-allowed" : "pointer",
                 boxSizing: "border-box",
                 fontSize: 12,
                 fontWeight: 600,
+                opacity: disabled ? 0.45 : 1,
                 ["--btn-bg" as any]: isIcon ? "#FFFFFF" : "transparent",
                 ["--btn-border" as any]: isIcon ? "#E5E8EF" : "transparent",
                 ["--btn-shadow" as any]: isIcon
@@ -483,7 +487,7 @@ function SecondaryCta({
     )
 }
 
-export default function TextFormatterFramerResponsive(props: Props) {
+function TextFormatter(props: Props) {
     const {
         title,
         placeholder,
@@ -498,6 +502,13 @@ export default function TextFormatterFramerResponsive(props: Props) {
 
     const [text, setText] = React.useState("")
     const [toast, setToast] = React.useState("")
+    const [selectionInfo, setSelectionInfo] = React.useState<{
+        count: number
+        textCount: number
+    }>({ count: 0, textCount: 0 })
+    const applyTextRef = React.useRef<(next: string, message?: string) => void>(
+        () => {}
+    )
 
     // FIX 4: history gestita con useRef per evitare closure stale.
     const historyRef = React.useRef<string[]>([""])
@@ -537,6 +548,46 @@ export default function TextFormatterFramerResponsive(props: Props) {
         return () => window.clearTimeout(timeout)
     }, [toast])
 
+    React.useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            const msg = (event.data as { pluginMessage?: any })?.pluginMessage
+            if (!msg) return
+            if (msg.type === "selectionInfo") {
+                setSelectionInfo({
+                    count: Number(msg.count) || 0,
+                    textCount: Number(msg.textCount) || 0,
+                })
+                return
+            }
+            if (msg.type === "selectionText") {
+                const incoming =
+                    typeof msg.text === "string" ? msg.text : ""
+                if (incoming.trim().length > 0) {
+                    applyTextRef.current(
+                        incoming,
+                        "Imported from selection"
+                    )
+                } else {
+                    showToast("No text selected")
+                }
+            }
+        }
+        window.addEventListener("message", handler)
+        return () => window.removeEventListener("message", handler)
+    }, [showToast])
+
+    const requestSelectionText = React.useCallback(() => {
+        parent.postMessage({ pluginMessage: { type: "getSelectionText" } }, "*")
+    }, [])
+
+    const applyToSelection = React.useCallback(() => {
+        parent.postMessage(
+            { pluginMessage: { type: "applyToSelection", text } },
+            "*"
+        )
+        showToast("Applied to selection")
+    }, [showToast, text])
+
     // FIX 4: pushHistory e applyText usano ref per leggere sempre il valore
     // corrente di historyIndex senza dipendere dalla closure.
     const pushHistory = React.useCallback((next: string) => {
@@ -556,6 +607,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
         },
         [pushHistory, showToast]
     )
+    applyTextRef.current = applyText
 
     const onTextChange = (value: string) => {
         setText(value)
@@ -1083,7 +1135,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                 width: "100%",
                 height,
                 boxSizing: "border-box",
-                overflow: "visible",
+                overflow: "auto",
                 background: "transparent",
                 color: textColor,
                 borderRadius: 0,
@@ -1754,6 +1806,47 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                 </div>
                             </div>
 
+                            {/* Canvas integration */}
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: 6,
+                                    flexWrap: "wrap",
+                                    alignItems: "center",
+                                    justifyContent: "flex-end",
+                                    flex: "0 1 auto",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        color: "#5A6472",
+                                        marginRight: 4,
+                                    }}
+                                >
+                                    Selection: {selectionInfo.textCount} text
+                                </div>
+                                <ToolbarButton
+                                    label="Import from selection"
+                                    icon={<ArrowUpDown size={16} />}
+                                    onClick={requestSelectionText}
+                                    accent={accent}
+                                    variant="icon"
+                                    disabled={selectionInfo.textCount === 0}
+                                />
+                                <ToolbarButton
+                                    label="Apply to selection"
+                                    icon={<ArrowRight size={16} />}
+                                    onClick={applyToSelection}
+                                    accent={accent}
+                                    variant="icon"
+                                    disabled={
+                                        selectionInfo.textCount === 0 ||
+                                        text.trim().length === 0
+                                    }
+                                />
+                            </div>
+
                             {/* Undo / Redo / Copy / Clear */}
                             <div
                                 style={{
@@ -1941,7 +2034,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
     )
 }
 
-TextFormatterFramerResponsive.defaultProps = {
+const DEFAULT_PROPS: Props = {
     title: "Text Formatter",
     placeholder: "Paste or type your text here…",
     height: 1100,
@@ -1953,33 +2046,24 @@ TextFormatterFramerResponsive.defaultProps = {
     fontSize: 15,
 }
 
-addPropertyControls(TextFormatterFramerResponsive, {
-    title: { type: ControlType.String, title: "Title" },
-    placeholder: { type: ControlType.String, title: "Placeholder" },
-    height: {
-        type: ControlType.Number,
-        title: "Height",
-        min: 700,
-        max: 2200,
-        step: 20,
-        unit: "px",
-    },
-    accent: { type: ControlType.Color, title: "Accent" },
-    accent2: { type: ControlType.Color, title: "Accent 2" },
-    background: { type: ControlType.Color, title: "Background" },
-    textColor: { type: ControlType.Color, title: "Text" },
-    radius: {
-        type: ControlType.Number,
-        title: "Radius",
-        min: 0,
-        max: 40,
-        step: 1,
-    },
-    fontSize: {
-        type: ControlType.Number,
-        title: "Font",
-        min: 12,
-        max: 22,
-        step: 1,
-    },
-})
+function App() {
+    const [height, setHeight] = React.useState(() =>
+        Math.max(640, window.innerHeight)
+    )
+
+    React.useEffect(() => {
+        const onResize = () => {
+            setHeight(Math.max(640, window.innerHeight))
+        }
+        window.addEventListener("resize", onResize)
+        return () => window.removeEventListener("resize", onResize)
+    }, [])
+
+    return <TextFormatter {...DEFAULT_PROPS} height={height} />
+}
+
+const rootElement = document.getElementById("root")
+if (rootElement) {
+    const root = createRoot(rootElement)
+    root.render(<App />)
+}

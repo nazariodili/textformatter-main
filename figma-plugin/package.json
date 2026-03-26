@@ -1,0 +1,26 @@
+{
+  "name": "textformatter-figma-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=dist/code.js",
+    "build:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=dist/ui.js",
+    "copy:ui": "cp src/ui.html dist/ui.html",
+    "build": "npm run build:code && npm run build:ui && npm run copy:ui",
+    "watch:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=dist/code.js --watch",
+    "watch:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=dist/ui.js --watch",
+    "watch": "concurrently \"npm run watch:code\" \"npm run watch:ui\""
+  },
+  "dependencies": {
+    "lucide-react": "^0.525.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.96.0",
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.4"
+  }
+}
