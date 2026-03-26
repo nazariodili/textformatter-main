@@ -21,21 +21,21 @@
   <body>
     <div id="root">
       <div id="tf-boot" style="padding:16px;font-size:14px;color:#5a6472;">
-        Sto aprendo il plugin...
+        Opening the plugin...
       </div>
     </div>
     <script>
       window.addEventListener("error", (event) => {
         const boot = document.getElementById("tf-boot");
         if (boot) {
-          boot.textContent = "Si è verificato un errore. Apri la Console del plugin per i dettagli.";
+          boot.textContent = "An error occurred. Open the plugin Console for details.";
         }
       });
       setTimeout(() => {
         if (!window.__tf_booted) {
           const boot = document.getElementById("tf-boot");
           if (boot) {
-            boot.textContent = "Non riesco a caricare l'interfaccia. Prova a ricompilare il plugin.";
+            boot.textContent = "Unable to load the interface. Try rebuilding the plugin.";
           }
         }
       }, 1200);
@@ -25772,8 +25772,8 @@ var TextFormatterUI = (() => {
               color: "#1B2437"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Errore UI." }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: "Apri la Console del plugin per i dettagli." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "UI error." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: "Open the plugin Console for details." }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: this.state.message })
             ]
           }

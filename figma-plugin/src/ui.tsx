@@ -1321,9 +1321,9 @@ class ErrorBoundary extends React.Component<
                         color: "#1B2437",
                     }}
                 >
-                    <strong>Errore UI.</strong>
+                    <strong>UI error.</strong>
                     <div style={{ marginTop: 8, color: "#5A6472" }}>
-                        Apri la Console del plugin per i dettagli.
+                        Open the plugin Console for details.
                     </div>
                     <div style={{ marginTop: 8, color: "#5A6472" }}>
                         {this.state.message}

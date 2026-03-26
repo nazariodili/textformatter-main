@@ -25728,8 +25728,8 @@ var TextFormatterUI = (() => {
               color: "#1B2437"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Errore UI." }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: "Apri la Console del plugin per i dettagli." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "UI error." }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: "Open the plugin Console for details." }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { marginTop: 8, color: "#5A6472" }, children: this.state.message })
             ]
           }

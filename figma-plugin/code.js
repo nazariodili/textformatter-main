@@ -91,9 +91,7 @@ figma.ui.onmessage = async (msg) => {
     for (let i = 0; i < textNodes.length; i++) {
       const node = textNodes[i];
       await loadFontsForNode(node);
-      if (node.textCase !== figma.mixed && node.textCase !== "ORIGINAL") {
-        node.textCase = "ORIGINAL";
-      }
+      node.textCase = "ORIGINAL";
       node.characters = usePerNode ? nextTexts[i] : nextText;
     }
     figma.notify(`Updated ${textNodes.length} text layer(s).`);

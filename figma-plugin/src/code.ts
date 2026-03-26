@@ -96,10 +96,8 @@ figma.ui.onmessage = async (msg) => {
     for (let i = 0; i < textNodes.length; i++) {
       const node = textNodes[i];
       await loadFontsForNode(node);
-      // Ensure we don't force Title/Upper/Lower casing from the text style.
-      if (node.textCase !== figma.mixed && node.textCase !== "ORIGINAL") {
-        node.textCase = "ORIGINAL";
-      }
+      // Always reset text case so applied transformations are visible.
+      node.textCase = "ORIGINAL";
       node.characters = usePerNode ? nextTexts![i] : nextText;
     }
     figma.notify(`Updated ${textNodes.length} text layer(s).`);
