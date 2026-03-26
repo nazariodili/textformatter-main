@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=dist/code.js",
-    "build:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=dist/ui.js",
-    "copy:ui": "cp src/ui.html dist/ui.html",
-    "build": "npm run build:code && npm run build:ui && npm run copy:ui",
-    "watch:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=dist/code.js --watch",
-    "watch:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=dist/ui.js --watch",
+    "build:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=code.js",
+    "build:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=ui.js",
+    "copy:ui": "cp src/ui.html ui.html",
+    "inline:ui": "node scripts/inline-ui.mjs",
+    "build": "npm run build:code && npm run build:ui && npm run inline:ui",
+    "watch:code": "esbuild src/code.ts --bundle --target=es2017 --format=cjs --outfile=code.js --watch",
+    "watch:ui": "esbuild src/ui.tsx --bundle --target=es2017 --format=iife --global-name=TextFormatterUI --outfile=ui.js --watch",
     "watch": "concurrently \"npm run watch:code\" \"npm run watch:ui\""
   },
   "dependencies": {

@@ -11,7 +11,7 @@
         padding: 0;
       }
       body {
-        background: #f6f6f7;
+        background: #ffffff;
         color: #1b2437;
         font-family: "Inter", "SF Pro Text", "SF Pro Display", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
@@ -19,7 +19,28 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script src="ui.js"></script>
+    <div id="root">
+      <div id="tf-boot" style="padding:16px;font-size:14px;color:#5a6472;">
+        Sto aprendo il plugin...
+      </div>
+    </div>
+    <script>
+      window.addEventListener("error", (event) => {
+        const boot = document.getElementById("tf-boot");
+        if (boot) {
+          boot.textContent = "Si è verificato un errore. Apri la Console del plugin per i dettagli.";
+        }
+      });
+      setTimeout(() => {
+        if (!window.__tf_booted) {
+          const boot = document.getElementById("tf-boot");
+          if (boot) {
+            boot.textContent = "Non riesco a caricare l'interfaccia. Prova a ricompilare il plugin.";
+          }
+        }
+      }, 1200);
+    </script>
+    </script>
+    <!-- UI_SCRIPT -->
   </body>
 </html>
