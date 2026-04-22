@@ -23,7 +23,6 @@ import {
 } from "lucide-react"
 
 type Props = {
-    title: string
     placeholder: string
     height: number
     accent: string
@@ -32,6 +31,17 @@ type Props = {
     textColor: string
     radius: number
     fontSize: number
+    // Nuove props colore
+    surfaceColor: string
+    borderColor: string
+    hoverBg: string
+    hoverBorder: string
+    selectedBg: string
+    selectedBorder: string
+    tooltipBg: string
+    toastBg: string
+    toastText: string
+    toolbarBg: string
 }
 
 function countWords(text: string) {
@@ -45,8 +55,6 @@ function countEffectiveLines(text: string) {
     return text.split("\n").length
 }
 
-// FIX 5: visibleLinesEstimate ora stima le righe visive considerando
-// il wrapping approssimativo (basato su ~80 caratteri per riga come default).
 function visibleLinesEstimate(text: string, charsPerLine = 80) {
     if (!text) return 0
     return text.split("\n").reduce((total, line) => {
@@ -305,6 +313,7 @@ function ToolbarButton({
     accent,
     variant = "ghost",
     selected = false,
+    colors,
 }: {
     label: string
     icon: React.ReactNode
@@ -312,6 +321,16 @@ function ToolbarButton({
     accent: string
     variant?: "ghost" | "icon"
     selected?: boolean
+    colors: {
+        surfaceColor: string
+        borderColor: string
+        hoverBg: string
+        hoverBorder: string
+        selectedBg: string
+        selectedBorder: string
+        tooltipBg: string
+        textColor: string
+    }
 }) {
     const isIcon = variant === "icon"
     const buttonRef = React.useRef<HTMLButtonElement | null>(null)
@@ -400,7 +419,7 @@ function ToolbarButton({
                 height: 24,
                 padding: isIcon ? "4px 6px" : "2px 6px",
                 borderRadius: 6,
-                color: "#1B2437",
+                color: colors.textColor,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -408,18 +427,23 @@ function ToolbarButton({
                 boxSizing: "border-box",
                 fontSize: 12,
                 fontWeight: 600,
-                ["--btn-bg" as any]: isIcon ? "#FFFFFF" : "transparent",
-                ["--btn-border" as any]: isIcon ? "#E5E8EF" : "transparent",
+                ["--btn-bg" as any]: isIcon
+                    ? colors.surfaceColor
+                    : "transparent",
+                ["--btn-border" as any]: isIcon
+                    ? colors.borderColor
+                    : "transparent",
                 ["--btn-shadow" as any]: isIcon
                     ? "0 1px 0 rgba(10, 15, 30, 0.04)"
                     : "none",
-                ["--btn-bg-hover" as any]: isIcon ? "#F4F6FA" : "#F4F6FA",
-                ["--btn-border-hover" as any]: isIcon ? "#DDE2EA" : "#DDE2EA",
+                ["--btn-bg-hover" as any]: colors.hoverBg,
+                ["--btn-border-hover" as any]: colors.hoverBorder,
                 ["--btn-shadow-hover" as any]: isIcon
                     ? "0 1px 0 rgba(10, 15, 30, 0.06)"
                     : "0 1px 0 rgba(10, 15, 30, 0.04)",
-                ["--btn-bg-selected" as any]: "#E9EEF6",
-                ["--btn-border-selected" as any]: "#D6DDE8",
+                ["--btn-bg-selected" as any]: colors.selectedBg,
+                ["--btn-border-selected" as any]: colors.selectedBorder,
+                ["--btn-tooltip-bg" as any]: colors.tooltipBg,
             }}
         >
             <span className="tf-toolbar-icon">{icon}</span>
@@ -438,6 +462,7 @@ function IconInput({
     onChange,
     placeholder,
     inputMode,
+    colors,
 }: {
     label?: string
     icon: React.ReactNode
@@ -445,11 +470,19 @@ function IconInput({
     onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
     placeholder?: string
     inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+    colors: { textColor: string; borderColor: string }
 }) {
     return (
         <div style={{ display: "grid", gap: 6 }}>
             {label && (
-                <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 600 }}>
+                <div
+                    style={{
+                        fontSize: 12,
+                        opacity: 0.65,
+                        fontWeight: 600,
+                        color: colors.textColor,
+                    }}
+                >
                     {label}
                 </div>
             )}
@@ -463,21 +496,80 @@ function IconInput({
                     onChange={onChange}
                     placeholder={placeholder}
                     inputMode={inputMode}
+                    style={{ color: colors.textColor } as React.CSSProperties}
                 />
             </div>
         </div>
     )
 }
 
+function IconButton({
+    icon,
+    onClick,
+    ariaLabel,
+    colors,
+}: {
+    icon: React.ReactNode
+    onClick: () => void
+    ariaLabel: string
+    colors: {
+        surfaceColor: string
+        borderColor: string
+        hoverBg: string
+        hoverBorder: string
+    }
+}) {
+    const [hovered, setHovered] = React.useState(false)
+    return (
+        <button
+            onClick={onClick}
+            aria-label={ariaLabel}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                background: hovered ? colors.hoverBg : colors.surfaceColor,
+                border: `1px solid ${hovered ? colors.hoverBorder : colors.borderColor}`,
+                borderRadius: 6,
+                padding: 4,
+                display: "grid",
+                placeItems: "center",
+                cursor: "pointer",
+                transition: "background 140ms ease, border-color 140ms ease",
+                flexShrink: 0,
+            }}
+        >
+            {icon}
+        </button>
+    )
+}
+
 function SecondaryCta({
     label,
     onClick,
+    colors,
 }: {
     label: string
     onClick: () => void
+    colors: {
+        surfaceColor: string
+        borderColor: string
+        hoverBg: string
+        hoverBorder: string
+        textColor: string
+    }
 }) {
     return (
-        <button className="tf-cta-secondary" onClick={onClick}>
+        <button
+            className="tf-cta-secondary"
+            onClick={onClick}
+            style={{
+                ["--cta-bg" as any]: colors.surfaceColor,
+                ["--cta-border" as any]: colors.borderColor,
+                ["--cta-bg-hover" as any]: colors.hoverBg,
+                ["--cta-border-hover" as any]: colors.hoverBorder,
+                color: colors.textColor,
+            }}
+        >
             {label}
         </button>
     )
@@ -485,7 +577,6 @@ function SecondaryCta({
 
 export default function TextFormatterFramerResponsive(props: Props) {
     const {
-        title,
         placeholder,
         height,
         accent,
@@ -494,15 +585,37 @@ export default function TextFormatterFramerResponsive(props: Props) {
         textColor,
         radius,
         fontSize,
+        surfaceColor,
+        borderColor,
+        hoverBg,
+        hoverBorder,
+        selectedBg,
+        selectedBorder,
+        tooltipBg,
+        toastBg,
+        toastText,
+        toolbarBg,
     } = props
+
+    const colors = {
+        surfaceColor,
+        borderColor,
+        hoverBg,
+        hoverBorder,
+        selectedBg,
+        selectedBorder,
+        tooltipBg,
+        toastBg,
+        toastText,
+        toolbarBg,
+        textColor,
+    }
 
     const [text, setText] = React.useState("")
     const [toast, setToast] = React.useState("")
 
-    // FIX 4: history gestita con useRef per evitare closure stale.
     const historyRef = React.useRef<string[]>([""])
     const historyIndexRef = React.useRef(0)
-    // Stato separato solo per forzare re-render quando necessario.
     const [, forceUpdate] = React.useReducer((x) => x + 1, 0)
 
     const [replaceBreaksWith, setReplaceBreaksWith] = React.useState("")
@@ -517,8 +630,6 @@ export default function TextFormatterFramerResponsive(props: Props) {
     const [activeSection, setActiveSection] = React.useState<
         "none" | "transform" | "lines" | "cleanup" | "replace"
     >("none")
-    // FIX 3: activeGroup separato da toolsOpen — il pannello laterale si apre
-    // solo al click, non al semplice hover nel menu.
     const [activeGroup, setActiveGroup] = React.useState("none")
     const [hoveredGroup, setHoveredGroup] = React.useState("none")
 
@@ -537,8 +648,6 @@ export default function TextFormatterFramerResponsive(props: Props) {
         return () => window.clearTimeout(timeout)
     }, [toast])
 
-    // FIX 4: pushHistory e applyText usano ref per leggere sempre il valore
-    // corrente di historyIndex senza dipendere dalla closure.
     const pushHistory = React.useCallback((next: string) => {
         const idx = historyIndexRef.current
         const trimmed = historyRef.current.slice(0, idx + 1)
@@ -630,22 +739,24 @@ export default function TextFormatterFramerResponsive(props: Props) {
 
     const showSidePanel = activeGroup !== "none"
 
-    const sectionMeta: Record<string, { label: string; icon: React.ReactNode }> =
-        {
-            transform: {
-                label: "Transform text",
-                icon: <Sparkles size={16} />,
-            },
-            lines: {
-                label: "Lines and structure",
-                icon: <Pilcrow size={16} />,
-            },
-            cleanup: { label: "Content cleanup", icon: <Eraser size={16} /> },
-            replace: {
-                label: "Find, replace, and filter",
-                icon: <Search size={16} />,
-            },
-        }
+    const sectionMeta: Record<
+        string,
+        { label: string; icon: React.ReactNode }
+    > = {
+        transform: {
+            label: "Transform text",
+            icon: <Sparkles size={16} />,
+        },
+        lines: {
+            label: "Lines and structure",
+            icon: <Pilcrow size={16} />,
+        },
+        cleanup: { label: "Content cleanup", icon: <Eraser size={16} /> },
+        replace: {
+            label: "Find, replace, and filter",
+            icon: <Search size={16} />,
+        },
+    }
 
     const groupMeta: Record<string, { label: string; icon: React.ReactNode }> =
         {
@@ -694,6 +805,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                         key={action.label}
                         label={action.label}
                         onClick={action.onClick}
+                        colors={colors}
                     />
                 ))}
             </div>
@@ -760,12 +872,18 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     {
                         label: "Unique words A–Z",
                         onClick: () =>
-                            applyText(uniqueWordsAZ(text), "Duplicates removed"),
+                            applyText(
+                                uniqueWordsAZ(text),
+                                "Duplicates removed"
+                            ),
                     },
                     {
                         label: "Unique words Z–A",
                         onClick: () =>
-                            applyText(uniqueWordsZA(text), "Duplicates removed"),
+                            applyText(
+                                uniqueWordsZA(text),
+                                "Duplicates removed"
+                            ),
                     },
                     {
                         label: "Remove duplicate lines (case-insensitive)",
@@ -791,7 +909,10 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             label="Replace all line breaks with"
                             icon={<Pilcrow size={18} />}
                             value={replaceBreaksWith}
-                            onChange={(e) => setReplaceBreaksWith(e.target.value)}
+                            onChange={(e) =>
+                                setReplaceBreaksWith(e.target.value)
+                            }
+                            colors={colors}
                         />
                         <SecondaryCta
                             label="Apply"
@@ -801,6 +922,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     "Line breaks replaced"
                                 )
                             }
+                            colors={colors}
                         />
                         <SecondaryCta
                             label="Remove all line breaks"
@@ -810,6 +932,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     "Line breaks removed"
                                 )
                             }
+                            colors={colors}
                         />
                     </div>
                 )
@@ -821,21 +944,28 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             icon={<Tag size={18} />}
                             value={prefix}
                             onChange={(e) => setPrefix(e.target.value)}
+                            colors={colors}
                         />
                         <IconInput
                             label="Suffix"
                             icon={<Tag size={18} />}
                             value={suffix}
                             onChange={(e) => setSuffix(e.target.value)}
+                            colors={colors}
                         />
                         <SecondaryCta
                             label="Apply to all lines"
                             onClick={() =>
                                 applyText(
-                                    addPrefixSuffixToLines(text, prefix, suffix),
+                                    addPrefixSuffixToLines(
+                                        text,
+                                        prefix,
+                                        suffix
+                                    ),
                                     "Prefix and suffix applied"
                                 )
                             }
+                            colors={colors}
                         />
                     </div>
                 )
@@ -847,6 +977,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             icon={<Scissors size={18} />}
                             value={breakAfter}
                             onChange={(e) => setBreakAfter(e.target.value)}
+                            colors={colors}
                         />
                         <SecondaryCta
                             label="Insert line break"
@@ -856,6 +987,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     "Line breaks inserted"
                                 )
                             }
+                            colors={colors}
                         />
                         <IconInput
                             label="Every X characters"
@@ -863,6 +995,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             value={everyChars}
                             onChange={(e) => setEveryChars(e.target.value)}
                             inputMode="numeric"
+                            colors={colors}
                         />
                         <SecondaryCta
                             label="Apply every X characters"
@@ -875,6 +1008,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     "Line breaks created"
                                 )
                             }
+                            colors={colors}
                         />
                     </div>
                 )
@@ -971,6 +1105,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             value={filterWord}
                             onChange={(e) => setFilterWord(e.target.value)}
                             placeholder="Filter word..."
+                            colors={colors}
                         />
                         <div
                             style={{
@@ -988,6 +1123,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         "Lines extracted"
                                     )
                                 }
+                                colors={colors}
                             />
                             <SecondaryCta
                                 label="Remove lines"
@@ -997,6 +1133,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         "Lines removed"
                                     )
                                 }
+                                colors={colors}
                             />
                             <SecondaryCta
                                 label="Keep lines"
@@ -1006,6 +1143,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         "Filter applied"
                                     )
                                 }
+                                colors={colors}
                             />
                         </div>
                     </div>
@@ -1028,6 +1166,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
                             placeholder="Find..."
+                            colors={colors}
                         />
                         <IconInput
                             label="Replace with"
@@ -1035,6 +1174,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             value={replaceValue}
                             onChange={(e) => setReplaceValue(e.target.value)}
                             placeholder="Replace with..."
+                            colors={colors}
                         />
                         <div
                             style={{
@@ -1056,6 +1196,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         "Per-line replacement completed"
                                     )
                                 }
+                                colors={colors}
                             />
                             <SecondaryCta
                                 label="Replace all"
@@ -1069,6 +1210,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         "Replacement completed"
                                     )
                                 }
+                                colors={colors}
                             />
                         </div>
                     </div>
@@ -1133,7 +1275,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                 }
                 .tf-toolbar-tooltip {
                     position: absolute;
-                    background: rgba(17, 17, 17, 0.92);
+                    background: var(--btn-tooltip-bg);
                     color: #fff;
                     padding: 6px 8px;
                     border-radius: 8px;
@@ -1150,7 +1292,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     left: 50%;
                     border-width: 6px 6px 0 6px;
                     border-style: solid;
-                    border-color: rgba(17, 17, 17, 0.92) transparent transparent transparent;
+                    border-color: var(--btn-tooltip-bg) transparent transparent transparent;
                     opacity: 0;
                     pointer-events: none;
                     transition: opacity 160ms ease, transform 160ms ease;
@@ -1263,11 +1405,11 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     border: 1px solid transparent;
                 }
                 .tf-menu-button:hover {
-                    background: rgba(27, 36, 55, 0.04);
+                    background: ${hoverBg};
                 }
                 .tf-menu-button[data-selected="true"] {
-                    background: #E9EEF6;
-                    border-color: #D6DDE8;
+                    background: ${selectedBg};
+                    border-color: ${selectedBorder};
                 }
                 .tf-input-row {
                     background: rgba(0, 0, 0, 0.03);
@@ -1280,7 +1422,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     transition: border-color 140ms ease, background 140ms ease;
                 }
                 .tf-input-row:focus-within {
-                    border-color: #D6DDE8;
+                    border-color: ${borderColor};
                     background: rgba(0, 0, 0, 0.04);
                 }
                 .tf-input-field {
@@ -1288,19 +1430,17 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     outline: none;
                     background: transparent;
                     font-size: 14px;
-                    color: #1B2437;
                     width: 100%;
                 }
                 .tf-input-field::placeholder {
                     color: rgba(27, 36, 55, 0.6);
                 }
                 .tf-cta-secondary {
-                    background: #FFFFFF;
-                    border: 1px solid #E5E8EF;
+                    background: var(--cta-bg);
+                    border: 1px solid var(--cta-border);
                     border-radius: 6px;
                     padding: 4px 6px;
                     font-size: 14px;
-                    color: #1B2437;
                     cursor: pointer;
                     transition: background 140ms ease, border-color 140ms ease;
                     white-space: nowrap;
@@ -1310,22 +1450,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     width: auto;
                 }
                 .tf-cta-secondary:hover {
-                    background: #F4F6FA;
-                    border-color: #DDE2EA;
-                }
-                .tf-panel-icon-button {
-                    background: #FFFFFF;
-                    border: 1px solid #E5E8EF;
-                    border-radius: 6px;
-                    padding: 4px;
-                    display: grid;
-                    place-items: center;
-                    cursor: pointer;
-                    transition: background 140ms ease, border-color 140ms ease;
-                }
-                .tf-panel-icon-button:hover {
-                    background: #F4F6FA;
-                    border-color: #DDE2EA;
+                    background: var(--cta-bg-hover);
+                    border-color: var(--cta-border-hover);
                 }
                 .tf-stats {
                     display: grid;
@@ -1398,44 +1524,6 @@ export default function TextFormatterFramerResponsive(props: Props) {
                 }
             `}</style>
 
-            {/* Header */}
-            <div
-                style={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 20,
-                    marginBottom: 12,
-                    background: "transparent",
-                    borderRadius: 0,
-                    padding: 0,
-                }}
-            >
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        marginBottom: 10,
-                    }}
-                >
-                    <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-                        <div
-                            style={{
-                                fontSize: 20,
-                                fontWeight: 700,
-                                lineHeight: 1.1,
-                                wordBreak: "break-word",
-                            }}
-                        >
-                            {title}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* FIX 2: ordine corretto — editor a sinistra, side panel a destra */}
             <div
                 className="tf-main-row"
                 style={{
@@ -1447,8 +1535,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                 {/* Colonna sinistra: editor principale */}
                 <div
                     style={{
-                        background: "#FFFFFF",
-                        border: "1px solid #E5E8EF",
+                        background: surfaceColor,
+                        border: `1px solid ${borderColor}`,
                         borderRadius: 14,
                         padding: 8,
                         width: "100%",
@@ -1468,7 +1556,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                 flexWrap: "wrap",
                                 padding: "6px 8px",
                                 borderRadius: 12,
-                                background: "rgba(27, 36, 55, 0.03)",
+                                background: toolbarBg,
                             }}
                         >
                             {/* Pulsanti case + more tools */}
@@ -1492,6 +1580,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         )
                                     }
                                     accent={accent}
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="All lowercase"
@@ -1503,6 +1592,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         )
                                     }
                                     accent={accent}
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="Title case"
@@ -1514,6 +1604,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         )
                                     }
                                     accent={accent}
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="All uppercase"
@@ -1525,6 +1616,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         )
                                     }
                                     accent={accent}
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="Random case"
@@ -1536,9 +1628,9 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         )
                                     }
                                     accent={accent}
+                                    colors={colors}
                                 />
 
-                                {/* FIX 1: menu popover con JSX correttamente bilanciato */}
                                 <div
                                     style={{
                                         position: "relative",
@@ -1560,6 +1652,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                         }
                                         accent={accent}
                                         selected={toolsOpen}
+                                        colors={colors}
                                     />
 
                                     {toolsOpen && (
@@ -1580,8 +1673,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                 className="tf-tools-panel"
                                                 style={{
                                                     width: "min(320px, 90vw)",
-                                                    background: "#FFFFFF",
-                                                    border: "1px solid #E5E8EF",
+                                                    background: surfaceColor,
+                                                    border: `1px solid ${borderColor}`,
                                                     borderRadius: 12,
                                                     boxShadow:
                                                         "0 12px 30px rgba(0,0,0,0.14)",
@@ -1627,7 +1720,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                             justifyContent:
                                                                 "space-between",
                                                             fontSize: 14,
-                                                            color: "#1B2437",
+                                                            color: textColor,
                                                             cursor: "pointer",
                                                             whiteSpace:
                                                                 "normal",
@@ -1643,8 +1736,16 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                                 minWidth: 0,
                                                             }}
                                                         >
-                                                            {sectionMeta[sectionKey]?.icon}
-                                                            {sectionMeta[sectionKey]?.label}
+                                                            {
+                                                                sectionMeta[
+                                                                    sectionKey
+                                                                ]?.icon
+                                                            }
+                                                            {
+                                                                sectionMeta[
+                                                                    sectionKey
+                                                                ]?.label
+                                                            }
                                                         </span>
                                                         <ChevronRight
                                                             size={14}
@@ -1653,14 +1754,15 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                 ))}
                                             </div>
 
-                                            {/* Pannello gruppi (visibile solo se sezione selezionata) */}
+                                            {/* Pannello gruppi */}
                                             {activeSection !== "none" && (
                                                 <div
                                                     className="tf-tools-panel"
                                                     style={{
                                                         width: "min(300px, 90vw)",
-                                                        background: "#FFFFFF",
-                                                        border: "1px solid #E5E8EF",
+                                                        background:
+                                                            surfaceColor,
+                                                        border: `1px solid ${borderColor}`,
                                                         borderRadius: 12,
                                                         boxShadow:
                                                             "0 12px 30px rgba(0,0,0,0.14)",
@@ -1695,9 +1797,6 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                     ).map((groupKey) => (
                                                         <button
                                                             key={groupKey}
-                                                            // FIX 3: onClick apre il pannello;
-                                                            // onMouseEnter aggiorna solo l'hover
-                                                            // senza aprire il side panel.
                                                             onClick={() => {
                                                                 setActiveGroup(
                                                                     groupKey
@@ -1735,7 +1834,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                                     "center",
                                                                 gap: 6,
                                                                 fontSize: 14,
-                                                                color: "#1B2437",
+                                                                color: textColor,
                                                                 cursor: "pointer",
                                                                 textAlign:
                                                                     "left",
@@ -1743,8 +1842,16 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                                                     "normal",
                                                             }}
                                                         >
-                                                            {groupMeta[groupKey]?.icon}
-                                                            {groupMeta[groupKey]?.label}
+                                                            {
+                                                                groupMeta[
+                                                                    groupKey
+                                                                ]?.icon
+                                                            }
+                                                            {
+                                                                groupMeta[
+                                                                    groupKey
+                                                                ]?.label
+                                                            }
                                                         </button>
                                                     ))}
                                                 </div>
@@ -1770,6 +1877,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     onClick={undo}
                                     accent={accent}
                                     variant="icon"
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="Redo"
@@ -1777,6 +1885,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     onClick={redo}
                                     accent={accent}
                                     variant="icon"
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="Copy"
@@ -1784,6 +1893,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     onClick={copyText}
                                     accent={accent}
                                     variant="icon"
+                                    colors={colors}
                                 />
                                 <ToolbarButton
                                     label="Clear"
@@ -1791,6 +1901,7 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     onClick={clearAll}
                                     accent={accent}
                                     variant="icon"
+                                    colors={colors}
                                 />
                             </div>
                         </div>
@@ -1833,23 +1944,21 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                 <div
                                     style={{
                                         fontSize: 14,
-                                        color: "#1B2437",
+                                        color: textColor,
                                         flex: "1 1 auto",
                                         minWidth: 0,
                                     }}
                                 >
-                                    {item.label}:{" "}
-                                    <strong>{item.value}</strong>
+                                    {item.label}: <strong>{item.value}</strong>
                                 </div>
-                                <button
-                                    className="tf-panel-icon-button"
+                                <IconButton
+                                    icon={<Copy size={16} color={textColor} />}
                                     onClick={() =>
                                         copyStat(item.label, item.value)
                                     }
-                                    aria-label={`Copy ${item.label}`}
-                                >
-                                    <Copy size={16} />
-                                </button>
+                                    ariaLabel={`Copy ${item.label}`}
+                                    colors={colors}
+                                />
                             </div>
                         ))}
                     </div>
@@ -1860,8 +1969,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                     <div
                         className="tf-side-panel"
                         style={{
-                            background: "#FFFFFF",
-                            border: "1px solid #E5E8EF",
+                            background: surfaceColor,
+                            border: `1px solid ${borderColor}`,
                             borderRadius: 14,
                             padding: 8,
                             width: "100%",
@@ -1871,7 +1980,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                             gap: 12,
                             opacity: 1,
                             transform: "translateX(0)",
-                            transition: "opacity 220ms ease, transform 220ms ease",
+                            transition:
+                                "opacity 220ms ease, transform 220ms ease",
                         }}
                     >
                         {/* Header pannello */}
@@ -1896,19 +2006,18 @@ export default function TextFormatterFramerResponsive(props: Props) {
                                     style={{
                                         fontSize: 14,
                                         fontWeight: 600,
-                                        color: "#1B2437",
+                                        color: textColor,
                                     }}
                                 >
                                     {panelHeader.title}
                                 </div>
                             </div>
-                            <button
-                                className="tf-panel-icon-button"
+                            <IconButton
+                                icon={<X size={16} color={textColor} />}
                                 onClick={() => setActiveGroup("none")}
-                                aria-label="Close panel"
-                            >
-                                <X size={16} />
-                            </button>
+                                ariaLabel="Close panel"
+                                colors={colors}
+                            />
                         </div>
 
                         <div className="tf-panel-content">{panelContent}</div>
@@ -1924,8 +2033,8 @@ export default function TextFormatterFramerResponsive(props: Props) {
                         right: 24,
                         top: 24,
                         zIndex: 9999,
-                        background: "#111",
-                        color: "white",
+                        background: toastBg,
+                        color: toastText,
                         padding: "12px 14px",
                         borderRadius: 14,
                         fontSize: 14,
@@ -1942,7 +2051,6 @@ export default function TextFormatterFramerResponsive(props: Props) {
 }
 
 TextFormatterFramerResponsive.defaultProps = {
-    title: "Text Formatter",
     placeholder: "Paste or type your text here…",
     height: 1100,
     accent: "#1B2437",
@@ -1951,10 +2059,20 @@ TextFormatterFramerResponsive.defaultProps = {
     textColor: "#1B2437",
     radius: 24,
     fontSize: 15,
+    // Nuovi default colori
+    surfaceColor: "#FFFFFF",
+    borderColor: "#E5E8EF",
+    hoverBg: "#F4F6FA",
+    hoverBorder: "#DDE2EA",
+    selectedBg: "#E9EEF6",
+    selectedBorder: "#D6DDE8",
+    tooltipBg: "rgba(17, 17, 17, 0.92)",
+    toastBg: "#111111",
+    toastText: "#FFFFFF",
+    toolbarBg: "rgba(27, 36, 55, 0.03)",
 }
 
 addPropertyControls(TextFormatterFramerResponsive, {
-    title: { type: ControlType.String, title: "Title" },
     placeholder: { type: ControlType.String, title: "Placeholder" },
     height: {
         type: ControlType.Number,
@@ -1964,10 +2082,29 @@ addPropertyControls(TextFormatterFramerResponsive, {
         step: 20,
         unit: "px",
     },
+    // — Colori testo e sfondo —
+    textColor: { type: ControlType.Color, title: "Text" },
+    background: { type: ControlType.Color, title: "Background" },
+    // — Colori superficie —
+    surfaceColor: { type: ControlType.Color, title: "Surface" },
+    toolbarBg: { type: ControlType.Color, title: "Toolbar BG" },
+    // — Colori bordi —
+    borderColor: { type: ControlType.Color, title: "Border" },
+    // — Stato hover —
+    hoverBg: { type: ControlType.Color, title: "Hover BG" },
+    hoverBorder: { type: ControlType.Color, title: "Hover Border" },
+    // — Stato selected —
+    selectedBg: { type: ControlType.Color, title: "Selected BG" },
+    selectedBorder: { type: ControlType.Color, title: "Selected Border" },
+    // — Tooltip —
+    tooltipBg: { type: ControlType.Color, title: "Tooltip BG" },
+    // — Toast —
+    toastBg: { type: ControlType.Color, title: "Toast BG" },
+    toastText: { type: ControlType.Color, title: "Toast Text" },
+    // — Accent —
     accent: { type: ControlType.Color, title: "Accent" },
     accent2: { type: ControlType.Color, title: "Accent 2" },
-    background: { type: ControlType.Color, title: "Background" },
-    textColor: { type: ControlType.Color, title: "Text" },
+    // — Tipografia —
     radius: {
         type: ControlType.Number,
         title: "Radius",
