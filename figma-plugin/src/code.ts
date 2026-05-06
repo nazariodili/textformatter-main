@@ -11,10 +11,34 @@ type SelectionInfo = {
   textCount: number;
 };
 
-const getTextSelection = () =>
-  figma.currentPage.selection.filter(
-    (node): node is TextNode => node.type === "TEXT"
-  );
+const hasChildren = (node: SceneNode): node is (SceneNode & ChildrenMixin) =>
+  "children" in node;
+
+const getTextSelection = () => {
+  const result: TextNode[] = [];
+  const seen = new Set<string>();
+  const stack: SceneNode[] = [...figma.currentPage.selection];
+
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+
+    if (node.type === "TEXT") {
+      if (!seen.has(node.id)) {
+        seen.add(node.id);
+        result.push(node);
+      }
+      continue;
+    }
+
+    if (hasChildren(node)) {
+      for (const child of node.children) {
+        stack.push(child as SceneNode);
+      }
+    }
+  }
+
+  return result;
+};
 
 const sendSelectionInfo = () => {
   const selection = figma.currentPage.selection;
